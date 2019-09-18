@@ -1,0 +1,61 @@
+.delHTML {
+    width: 100%;
+    height: 40px;
+    position: relative;
+    line-height: 40px;
+    border-bottom: 1px solid #cccccc;
+}
+
+.fenceTitle {
+    width: 100%;
+    height: 40px;
+    font-size: 0;
+}
+
+.fenceTitle li {
+    display: inline-block;
+    font-size: 20px;
+    width: 28%;
+    line-height: 40px;
+    text-align: center;
+}
+
+.fenceTitle li:nth-child(4) {
+    width: 8%;
+}
+
+.fenceTitle li:nth-child(5) {
+    width: 8%;
+}
+
+.fenceMain {
+    width: 100%;
+    height: 350px;
+}
+
+
+.fenceMain li {
+    width: 100%;
+    height: 35px;
+    font-size: 0;
+}
+
+.fenceMain li span {
+    display: block;
+    width: 28%;
+    height: 100%;
+    line-height: 35px;
+    overflow-x: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+}
+
+.fenceMain li span:nth-child(4) {
+    width: 8%;
+
+}
+
+.fenceMain li span:nth-child(5) {
+    width: 8%;
+    cursor: pointer;
+}

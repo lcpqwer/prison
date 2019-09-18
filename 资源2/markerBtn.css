@@ -1,0 +1,32 @@
+.markerBtn {
+    position: absolute;
+    right: 0;
+    top: 400px;
+}
+
+.newMarker {
+    width: 100px;
+    height: 50px;
+    line-height: 50px;
+    background-color: #2b2b2b;
+    opacity: 0.5;
+    color: #ffffff;
+    font-size: 16px;
+}
+
+#delLocus {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top:10px;
+}
+
+.delLocus {
+    width: 150px;
+    height: 50px;
+    line-height: 50px;
+    background-color: #2b2b2b;
+    opacity: 0.5;
+    color: #ffffff;
+    font-size: 16px;
+}

@@ -1,0 +1,60 @@
+#nameMarker {
+    position: fixed;
+    margin: auto;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 600px;
+    height: 200px;
+    background-color: #2b2b2b;
+    text-align: center;
+    border-radius: 10px
+}
+
+.z-index1 {
+	z-index: 1000
+}
+
+#nameMarker * {
+    color: #ffffff;
+}
+
+#nameMarker .fz {
+    font-size: 20px;
+}
+
+#nameMarker .title {
+    position: absolute;
+    left: 20px;
+    margin-top: 20px;
+}
+
+#nameMarker .main {
+    margin-top: 70px;
+}
+
+#nameMarker #angle-name {
+    width: 400px;
+    height: 30px;
+    border-radius: 5px;
+    border: 2px solid #000000;
+    color: #000000;
+}
+
+#nameMarker .add-sub {
+    width: 55px;
+    height: 25px;
+    border: none;
+    border-radius: 3px;
+}
+
+#nameMarker .add-sub:nth-child(1) {
+    background-color: #81F79F;
+    margin-right: 40px
+}
+
+#nameMarker .add-sub:nth-child(2) {
+    background-color: #FA5858;
+    margin-left: 40px
+}

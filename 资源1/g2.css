@@ -1,0 +1,85 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+.title_two {
+    width: 100%;
+    font-size: 0;
+}
+
+.title_two div {
+    width: 50%;
+    display: inline-block;
+    height: 50px;
+    font-size: 16px;
+    line-height: 50px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.title_two .active {
+    border-bottom: 1px solid red;
+}
+
+*, body, ul, li, h1, h2 {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tre_box h3, .tre_one h4, .tre_one li, .tre_two li {
+    cursor: pointer;
+}
+
+.tre_box h3 {
+    margin-left: 10px;
+}
+
+.tre_one, .tre_two, .tre_three {
+    display: none;
+    margin: 0 0 0 20px;
+    overflow: hidden;
+}
+
+.tre_one li {
+    margin: 5px 0;
+}
+
+.tre {
+    background-color: #2b2b2b;
+    width: 100%;
+    height: 440px;
+    overflow-y: auto;
+}
+
+.tre::-webkit-scrollbar {
+    display: none;
+}
+.navtion_bar {
+    width: 150px;
+    background-color: #2b2b2b;
+    color: #ffffff;
+    height: 500px;
+    border-radius: 10px;
+    margin-left: 1px;
+    position: fixed;
+    top: 0;
+    opacity: 0.5;
+  	z-index: 1;
+}
+
+.navtion_bar * {
+    opacity: 1;
+}
+
+.tre_box {
+    margin-top: 10px;
+}
+.tre_name {
+	font-size: 12px;
+  	font-weight: normal;
+}
+h5 {
+    font-size: 12px;
+}

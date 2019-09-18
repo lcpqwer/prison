@@ -1,0 +1,60 @@
+* {
+    margin: 0;
+    padding: 0
+}
+
+body {
+    font-size: 12px;
+}
+
+ul, li {
+    list-style: none;
+}
+
+.list {
+    width: 210px;
+    position: fixed;
+    right: 100px;
+  	top:0;
+  	z-index: 1000;
+}
+
+/*.list ul li {*/
+/*background-color: #ffffff;*/
+/*}*/
+
+.list ul li span {
+    display: inline-block;
+    padding-left: 10px;
+    color: #000;
+    font-size: 12px;
+    display: block;
+    font-weight: bold;
+    height: 36px;
+    line-height: 36px;
+    background-color: #9C9C9C;
+}
+
+.list ul li ul li {
+    width: 50px;
+    height: 50px;
+    display: inline-block;
+    margin-left: 10px;
+    margin-top: 10px;
+    border: 1px solid #9C9C9C;
+    cursor: pointer;
+
+}
+
+span {
+    cursor: pointer;
+}
+
+.yiji > li {
+    margin-top: 10px;
+}
+
+.list img {
+    width: 100%;
+    height: 100%;
+}

@@ -1,0 +1,117 @@
+* {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.searchThing {
+    position: fixed;
+    margin: auto;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 400px;
+    height: 500px;
+    background-color: #2b2b2b;
+    border-radius: 10px;
+    opacity: 0.5;
+	z-index: 1;	
+}
+
+.searchThing * {
+    color: #ffffff;
+}
+
+.searchThing .Search {
+    text-align: center;
+
+}
+
+.searchThing .SB_title {
+    height: 40px;
+    line-height: 40px;
+    border-bottom: 1px solid #cccccc;
+    position: relative;
+}
+
+.searchThing .SB_btn {
+    background-color: #000;
+}
+
+.searchThing .SB_main {
+    width: 100%;
+    height: 459px;
+}
+
+.searchThing .info_title {
+    width: 100%;
+    height: 40px;
+    font-size: 0;
+    line-height: 40px;
+    text-align: center;
+}
+
+.searchThing .info_title li {
+    width: 33.33333333%;
+    display: inline-block;
+    font-size: 20px;
+}
+
+.searchThing input {
+    color: #000;
+}
+
+.searchThing .SB_info {
+    width: 100%;
+    height: 410px;
+    overflow-y: scroll;
+    font-size: 0;
+}
+
+.searchThing .SB_info li {
+    width: 100%;
+    height: 30px;
+    margin-top: 5px;
+    line-height: 30px;
+    cursor: pointer;
+}
+
+.searchThing li span {
+    display: block;
+    width: 33.33333%;
+    font-size: 16px;
+    display: inline-block;
+    text-align: center;
+}
+
+.searchThing .SB_info::-webkit-scrollbar {
+    display: none;
+}
+
+.searchThing .wrang {
+    color: red;
+}
+.upinput {
+	z-index: 1
+}
+
+.searchThing img {
+    width: 25%;
+    height: 100%;
+    vertical-align: middle;
+}
+
+
+.close_btn {
+    position: absolute;
+    right: 10px;
+    cursor: pointer;
+  	top: 50%;
+    transform: translateY(-50%);
+    font-size: 25px;
+}
+
+.liOne {
+	cursor: pointer;
+}
