@@ -1,0 +1,5445 @@
+//加载场景代码
+// 防止选中复制
+document.oncontextmenu = new Function('event.returnValue=false;'); document.onselectstart = new Function('event.returnValue=false;');
+// 获取用户id
+
+function getUrlParam(name) {
+    var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象
+    // console.log(window.location.search)
+    var r = window.location.search.substr(3).match(reg);  //匹配目标参数
+    if (r != null) {
+        return unescape(r[2])
+    };
+    return null; //返回参数值
+}
+var user_id;
+try {
+    user_id = getUrlParam('id');
+} catch (e) {
+    user_id = 1
+}
+
+var peoplE = true;
+var urlAll = "http://47.103.34.10:8080"
+var i = true;
+// 模型链接
+// person：狱警 prisoner：犯人 outsider：外来人员 
+var model_json = {
+    'person': 'https://model.3dmomoda.com/models/899983b6bb294138b9db9df697268c50/0/gltf/',
+    'prisoner': 'https://model.3dmomoda.com/models/01bff3f35ba54fc3b106fb16e36771b5/0/gltf/',
+    'outsider': 'https://model.3dmomoda.com/models/6CBF92D4ADD14E1DBAD171C29C7FB5A3/0/gltf/',
+}
+
+// app.on(THING.EventType.LevelFlyEnd, "*", function (ev) {
+
+//     app.query('.Building').visible = true
+// }, '11');
+// -------------------------------------------------------
+// 封装楼层类
+function Floor(obj) {
+    // console.log('楼层', obj.floorNum)
+    this.obj = obj;
+    var panel = new THING.widget.Panel({
+        width: "130px",
+        // 是否有标题
+        hasTitle: true,
+        // 设置标题名称
+        titleText: obj.parents.query('.Building')[0].id + '  ' + obj.floorNum,
+        opacity: 0.5,
+        cornerType: 'polyline',
+        // isClose: true,
+        height: '5px',
+    })
+    // 创建UIAnchor面板
+    this.uiAnchor = app.create({
+        // 类型
+        type: 'UIAnchor',
+        // 父节点设置
+        parent: obj,
+        // 要绑定的页面的 element 对象
+        element: panel.domElement,
+        // 设置 localPosition 为 [0, 0, 0]
+        localPosition: [0, 0, 0],
+        // 指定页面的哪个点放到localPosition位置上(百分比)
+        pivot: [-0.2, 2.1]
+    })
+    this.uiAnchor.visible = false
+    panel.on('click', function () {
+        app.camera.fit(obj)
+    })
+}
+
+Floor.prototype.showUI = function (boolValue) {
+    this.uiAnchor.visible = boolValue
+}
+// ----?---------------------------------------------------
+// 封装房间类
+function Room(obj) {
+    this.obj = obj;
+    var panel = new THING.widget.Panel({
+        width: "130px",
+        // 是否有标题
+        hasTitle: true,
+        // 设置标题名称
+        titleText: obj.parents.query('.Building')[0].id + '  ' + obj.id,
+        opacity: 0.5,
+        cornerType: 'polyline',
+        // isClose: true,
+        height: '5px',
+    })
+    // 创建UIAnchor面板
+    this.uiAnchor = app.create({
+        // 类型
+        type: 'UIAnchor',
+        // 父节点设置
+        parent: obj,
+        // 要绑定的页面的 element 对象
+        element: panel.domElement,
+        // 设置 localPosition 为 [0, 0, 0]
+        localPosition: [0, 0, 0],
+        // 指定页面的哪个点放到localPosition位置上(百分比)
+        pivot: [-0.2, 2.1]
+    })
+    this.uiAnchor.visible = false
+    panel.on('click', function () {
+        app.camera.fit(obj)
+    })
+}
+
+Room.prototype.showUI = function (boolValue) {
+    this.uiAnchor.visible = boolValue
+}
+// -------------------------------------------------------
+// 封装建筑类
+function Build(obj) {
+    this.obj = obj;
+    var panel = new THING.widget.Panel({
+        width: "130px",
+        // 是否有标题
+        hasTitle: true,
+        // 设置标题名称
+        titleText: obj.id,
+        opacity: 0.5,
+        cornerType: 'polyline',
+        // isClose: true,
+        height: '5px',
+    })
+    // 创建UIAnchor面板
+    this.uiAnchor = app.create({
+        // 类型
+        type: 'UIAnchor',
+        // 父节点设置
+        parent: obj,
+        // 要绑定的页面的 element 对象
+        element: panel.domElement,
+        // 设置 localPosition 为 [0, 0, 0]
+        localPosition: [0, 0, 0],
+        // 指定页面的哪个点放到localPosition位置上(百分比)
+        pivot: [-0.2, 2.1]
+    })
+    this.uiAnchor.visible = false
+    panel.on('click', function () {
+        app.camera.fit(obj)
+    })
+}
+
+Build.prototype.showUI = function (boolValue) {
+    this.uiAnchor.visible = boolValue
+}
+
+// ------------------------------------------------------------
+// 摄像头对象封装
+function VideoCamera(obj) {
+    this.obj = obj;
+    this.videoFrame = null;
+    this.info = { '编号': obj.name, '': '', '操作': '<button id="' + obj.name + '">播放<button>' }
+    var that = this;
+    // 创建widget (动态绑定数据用)
+
+    this.marker = app.create({
+        type: "Marker",
+        offset: [0, 10, 0],
+        size: 2,
+        url: '/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img2/摄像头.png',
+        parent: obj,
+        position: [obj.position[0], 21, obj.position[2]]
+    });
+    this.marker.visible = false;
+    this.marker.on('click', function () {
+        that.showPanel()
+    });
+}
+
+VideoCamera.prototype.showUI = function (boolValue) {
+    this.marker.visible = boolValue;
+}
+
+VideoCamera.prototype.showVideoFrame = function () {
+    if (this.videoFrame) {
+        this.videoFrame.destroy();
+        this.videoFrame = null;
+    }
+    // console.log('创建面板')
+    this.videoFrame = new THING.widget.Panel({
+        template: '7',
+        name: this.obj.name,
+        closeIcon: true,
+        isDrag: true,
+        hasTitle: true,
+        width: "538px",
+        media: true,
+    });
+    var ui2data = { iframe: true };
+    var videoUrlList = ['http://221.228.226.23/11/t/j/v/b/tjvbwspwhqdmgouolposcsfafpedmb/sh.yinyuetai.com/691201536EE4912BF7E4F1E2C67B8119.mp4', 'http://hls.open.ys7.com/openlive/c360540fb29545beac3a163094120402.m3u8'];//乌镇蓝印花布,水长城,黄龙风景名胜区
+    this.videoFrame.addIframe(ui2data, 'iframe').name("　").iframeUrl('http://www.thingjs.com/demos/player/player.html?url=' + videoUrlList[1]).setHeight('500px');
+    this.videoFrame.setPosition({ left: app.domElement.offsetWidth - this.videoFrame.domElement.offsetWidth - 100, top: 100 });// ui位置默认在 右上角
+    this.videoFrame.setZIndex(999999);
+
+    var that = this;
+    this.videoFrame.on('close', function () {
+        if (that.videoFrame) {
+            that.videoFrame.destroy();
+            that.videoFrame = null;
+        }
+    });
+}
+
+VideoCamera.prototype.showPanel = function () {
+    var that = this
+    if (this.ui) {
+        // console.log(1)
+        this.ui.destroy()
+        this.ui = null
+    } else {
+        var panel = new THING.widget.Panel({
+            cornerType: 'polyline',
+            opacity: 0.5,
+            template: '7',
+            closeIcon: true,
+            isDrag: true,
+            hasTitle: true,
+            width: "200px",
+            media: true,
+        });
+        for (var key in this.info)
+            panel.add(this.info, key);
+        $('#' + this.obj.name).click(function () {
+            that.showVideoFrame();
+        })
+
+
+        // 创建obj ui (跟随物体用)
+        this.ui = app.create({
+            type: 'UI',
+            parent: this.obj,
+            el: panel.domElement,
+            offset: [0, this.height + 2, 0],
+            pivot: [0, 1.45]
+        });
+    }
+}
+// ---------------------------------------------------
+// 狱警对象封装
+function Person(obj) {
+    this.obj = obj;
+    //console.log(obj)
+    this.info = { '编号': obj.name, '姓名': obj.userData.username, '类别': '狱警', '<button>查看</button><button>轨迹</button>': '' };
+    var that1 = this
+    this.marker = app.create({
+        type: "Marker",
+        offset: [0, 10, 0],
+        size: 5,
+        url: '/uploads/wechat/bWVzb255Y2hpZA==/file/demo0614/b.png',
+        parent: obj,
+        position: [obj.position[0], obj.position[1] + 10, obj.position[2]]
+    });
+    this.marker.visible = false;
+    this.marker.on('click', function () {
+        // app.camera.fit(obj)
+        that1.showPanel()
+    });
+
+
+}
+
+Person.prototype.showUI = function (boolValue) {
+    this.marker.visible = boolValue;
+}
+
+
+
+Person.prototype.showPanel = function () {
+    if (this.ui) {
+        this.ui.destroy()
+        this.ui = null
+    } else {
+        var panel = new THING.widget.Panel({
+            cornerType: 'polyline',
+            opacity: 0.5,
+            template: '7',
+            closeIcon: true,
+            isDrag: true,
+            hasTitle: true,
+            width: "200px",
+            media: true,
+            // parent: this.obj
+        });
+        for (var key in this.info)
+            panel.add(this.info, key);
+
+
+
+        // 创建obj ui (跟随物体用)
+        this.ui = app.create({
+            type: 'UIAnchor',
+            parent: this.obj,
+            el: panel.domElement,
+            // offset: [0, this.height + 2, 0],
+            localPosition: [0, 0, 0],
+            pivot: [-0.2, 1.8]
+        });
+    }
+}
+
+// ---------------------------------------------------
+// 犯人对象封装
+function Prisoner(obj) {
+    this.obj = obj;
+    //console.log(obj)
+    this.info = { '编号': obj.name, '姓名': obj.userData.username, '类别': '犯人', '<button>查看</button><button>轨迹</button>': '' };
+    var that1 = this
+    this.marker = app.create({
+        type: "Marker",
+        offset: [0, 10, 0],
+        size: 5,
+        url: '/uploads/wechat/bWVzb255Y2hpZA==/file/demo0614/a.png',
+        parent: obj,
+        position: [obj.position[0], obj.position[1] + 10, obj.position[2]]
+    });
+    this.marker.visible = false;
+    this.marker.on('click', function () {
+        // app.camera.fit(obj)
+        that1.showPanel()
+    });
+
+
+}
+
+Prisoner.prototype.showUI = function (boolValue) {
+    this.marker.visible = boolValue;
+}
+
+
+
+Prisoner.prototype.showPanel = function () {
+    if (this.ui) {
+        this.ui.destroy()
+        this.ui = null
+    } else {
+        var panel = new THING.widget.Panel({
+            cornerType: 'polyline',
+            opacity: 0.5,
+            template: '7',
+            closeIcon: true,
+            isDrag: true,
+            hasTitle: true,
+            width: "200px",
+            media: true,
+            // parent: this.obj
+        });
+        for (var key in this.info)
+            panel.add(this.info, key);
+
+
+
+        // 创建obj ui (跟随物体用)
+        this.ui = app.create({
+            type: 'UIAnchor',
+            parent: this.obj,
+            el: panel.domElement,
+            // offset: [0, this.height + 2, 0],
+            localPosition: [0, 0, 0],
+            pivot: [-0.2, 1.8]
+        });
+    }
+}
+// ---------------------------------------------------
+// 外来人员对象封装
+function Outsider(obj) {
+    this.obj = obj;
+    //console.log(obj)
+    this.info = { '编号': obj.name, '姓名': obj.userData.username, '类别': '犯人', '<button>查看</button><button>轨迹</button>': '' };
+    var that1 = this
+    this.marker = app.create({
+        type: "Marker",
+        offset: [0, 10, 0],
+        size: 5,
+        url: '/uploads/wechat/bWVzb255Y2hpZA==/file/demo0614/c.png',
+        parent: obj,
+        position: [obj.position[0], obj.position[1] + 10, obj.position[2]]
+    });
+    this.marker.visible = false;
+    this.marker.on('click', function () {
+        // app.camera.fit(obj)
+        that1.showPanel()
+    });
+
+
+}
+
+Outsider.prototype.showUI = function (boolValue) {
+    this.marker.visible = boolValue;
+}
+
+
+
+Outsider.prototype.showPanel = function () {
+    if (this.ui) {
+        this.ui.destroy()
+        this.ui = null
+    } else {
+        var panel = new THING.widget.Panel({
+            cornerType: 'polyline',
+            opacity: 0.5,
+            template: '7',
+            closeIcon: true,
+            isDrag: true,
+            hasTitle: true,
+            width: "200px",
+            media: true,
+            // parent: this.obj
+        });
+        for (var key in this.info)
+            panel.add(this.info, key);
+
+
+
+        // 创建obj ui (跟随物体用)
+        this.ui = app.create({
+            type: 'UIAnchor',
+            parent: this.obj,
+            el: panel.domElement,
+            // offset: [0, this.height + 2, 0],
+            localPosition: [0, 0, 0],
+            pivot: [-0.2, 1.8]
+        });
+    }
+}
+// ---------------------------------------------------
+// 摄像头对象封装
+function MJ(obj) {
+    this.obj = obj;
+    this.info = { '编号': obj.name, '类别': obj.a };
+    var that = this
+    this.marker = app.create({
+        type: "Marker",
+        offset: [0, 10, 0],
+        size: 2,
+        url: '/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img2/门禁.png',
+        parent: obj,
+        position: [obj.position[0], 30, obj.position[2]]
+    });
+    this.marker.visible = false;
+    this.marker.on('click', function () {
+        that.showPanel()
+        // app.camera.fit(obj)
+
+    });
+
+}
+
+
+
+MJ.prototype.showUI = function (boolValue) {
+    this.marker.visible = boolValue;
+}
+
+MJ.prototype.showPanel = function () {
+    if (this.ui) {
+        this.ui.destroy();
+        this.ui = null;
+    } else {
+        var panel = new THING.widget.Panel({
+            cornerType: 'polyline',
+            opacity: 0.5,
+            template: '7',
+            closeIcon: true,
+            isDrag: true,
+            hasTitle: true,
+            width: "200px",
+            media: true,
+        });
+        for (var key in this.info)
+            panel.add(this.info, key);
+        this.panel = panel;
+        // 创建obj ui (跟随物体用)
+        this.ui = app.create({
+            type: 'UIAnchor',
+            parent: this.obj,
+            el: panel.domElement,
+            // offset: [0, this.height + 2, 0],
+            localPosition: [0, 0, 0],
+            pivot: [-0.2, 2.1]
+        });
+    }
+}
+// ------------------------------------------------------------
+function CJ(obj) {
+    this.obj = obj;
+    this.info = { '编号': obj.name, '类别': obj.a };
+    var that = this
+    this.marker = app.create({
+        type: "Marker",
+        offset: [0, 10, 0],
+        size: 1,
+        url: '/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img2/车禁.png',
+        parent: obj,
+        position: [obj.position[0], 30, obj.position[2]]
+    });
+    this.marker.visible = false;
+    this.marker.on('click', function () {
+        that.showPanel()
+        // app.camera.fit(obj)
+
+    });
+
+}
+
+
+
+CJ.prototype.showUI = function (boolValue) {
+    this.marker.visible = boolValue;
+}
+
+
+CJ.prototype.showPanel = function () {
+    if (this.ui) {
+        this.ui.destroy();
+        this.ui = null;
+    } else {
+        var panel = new THING.widget.Panel({
+            cornerType: 'polyline',
+            opacity: 0.5,
+            template: '7',
+            closeIcon: true,
+            isDrag: true,
+            hasTitle: true,
+            width: "200px",
+            media: true,
+        });
+        for (var key in this.info)
+            panel.add(this.info, key);
+        this.panel = panel;
+        // 创建obj ui (跟随物体用)
+        this.ui = app.create({
+            type: 'UIAnchor',
+            parent: this.obj,
+            el: panel.domElement,
+            // offset: [0, this.height + 2, 0],
+            localPosition: [0, 0, 0],
+            pivot: [-0.2, 2.1]
+        });
+    }
+}
+// ---------------------------------------------------
+function JZ(obj) {
+    this.obj = obj;
+    //console.log('基站的信息',obj)
+    this.info = { '编号': obj.name, '类别': obj.a, '操作': '<button id="' + obj.name + '">查看</button>' };
+    var that = this
+    this.marker = app.create({
+        type: "Marker",
+        offset: [0, 10, 0],
+        size: 8,
+        url: '/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img2/基站 (1).png',
+        parent: obj,
+        position: [obj.position[0], 30, obj.position[2]]
+    });
+    this.marker.visible = false;
+    this.marker.on('click', function () {
+        that.showPanel()
+        // app.camera.fit(obj)
+
+    });
+    $('#obj.name').click(function () {
+        alert(1)
+    })
+
+}
+
+
+
+JZ.prototype.showUI = function (boolValue) {
+    this.marker.visible = boolValue;
+}
+
+JZ.prototype.showPanel = function () {
+    if (this.ui) {
+        this.ui.destroy();
+        this.ui = null;
+    } else {
+        var panel = new THING.widget.Panel({
+            cornerType: 'polyline',
+            opacity: 0.5,
+            template: '7',
+            closeIcon: true,
+            isDrag: true,
+            hasTitle: true,
+            width: "200px",
+            media: true,
+        });
+        for (var key in this.info)
+            panel.add(this.info, key);
+        this.panel = panel;
+        // 创建obj ui (跟随物体用)
+        this.ui = app.create({
+            type: 'UIAnchor',
+            parent: this.obj,
+            el: panel.domElement,
+            // offset: [0, this.height + 2, 0],
+            localPosition: [0, 0, 0],
+            pivot: [-0.2, 2.1]
+        });
+    }
+}
+// -------------------------------------------------
+function YJ(obj) {
+    this.obj = obj;
+    this.info = { '编号': obj.name, '类别': obj.a };
+    var that = this
+    this.marker = app.create({
+        type: "Marker",
+        offset: [0, 10, 0],
+        size: 4,
+        url: '/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img2/一键报警.png',
+        parent: obj,
+        position: [obj.position[0], 30, obj.position[2]]
+    });
+    this.marker.visible = false;
+    this.marker.on('click', function () {
+        that.showPanel()
+        // app.camera.fit(obj)
+
+    });
+
+}
+
+
+
+YJ.prototype.showUI = function (boolValue) {
+    this.marker.visible = boolValue;
+}
+
+YJ.prototype.showPanel = function () {
+    if (this.ui) {
+        this.ui.destroy();
+        this.ui = null;
+    } else {
+        var panel = new THING.widget.Panel({
+            cornerType: 'polyline',
+            opacity: 0.5,
+            template: '7',
+            closeIcon: true,
+            isDrag: true,
+            hasTitle: true,
+            width: "200px",
+            media: true,
+        });
+        for (var key in this.info)
+            panel.add(this.info, key);
+        this.panel = panel;
+        // 创建obj ui (跟随物体用)
+        this.ui = app.create({
+            type: 'UIAnchor',
+            parent: this.obj,
+            el: panel.domElement,
+            // offset: [0, this.height + 2, 0],
+            localPosition: [0, 0, 0],
+            pivot: [-0.2, 2.1]
+        });
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------
+// 数组删除指定元素
+Array.prototype.indexOf = function (val) {
+    for (var i = 0; i < this.length; i++) {
+        if (this[i] == val) return i;
+    }
+    return -1;
+};
+Array.prototype.remove = function (val) {
+    var index = this.indexOf(val);
+    if (index > -1) {
+        this.splice(index, 1);
+    }
+};
+
+addHTML()
+addIndexHTML()
+addSBHTML()
+create_html()
+create_html1()
+addSearchHTML()
+addComHTML()
+addVoiceCalls()
+addVideoCalls()
+addWHTML()
+var app = new THING.App({
+    // 场景地址
+    //"url": "http://www.thingjs.com/./uploads/wechat/bWVzb255Y2hpZA==/scene/demo",
+    //"url": "http://www.thingjs.com/./uploads/wechat/bWVzb255Y2hpZA==/scene/demo15",
+    "url": "http://www.thingjs.com/./uploads/wechat/bWVzb255Y2hpZA==/scene/demo06132",
+    //背景设置
+    "skyBox": "BlueSky"
+});
+
+var mjBool = personBool = reiLiTu = false
+var heatMap, heatTime;
+app.on('load', function (ev) {
+    // addHTML()
+    // addIndexHTML()
+    // addSBHTML()
+    // create_html()
+    // create_html1()
+    // addSearchHTML()
+    // addComHTML()
+    // addVoiceCalls()
+    // addVideoCalls()
+    // addWHTML()
+    fenceMouseup()
+    get_sb_ALL_info
+    create_html_gaoj()
+    init()
+    gaoJingAll()
+    // box_choose()
+    app.level.change(ev.campus)
+    ty()
+    $("#view_r").on("click", function () {
+        reiLiTu = !reiLiTu
+
+        if (reiLiTu) {
+            heatMap = app.create({
+                type: "Heatmap",
+                position: [65, 0, -105],
+                width: 650, // 宽度 单位米
+                height: 650, // 长度 单位米
+
+                radius: 1, // 单个点的热力影响半径
+                alpha: true // 未插值区域是否透明（默认为 false ）
+            });
+            heatMap.rotateX(90);
+
+            $.ajax({
+                type: "get",
+                url: urlAll + "/heatingpower",
+                dataType: "json",
+                jsonpCallback: "callback",
+                success: function (data) {
+                    var datER1 = [];
+                    data.forEach((data, i) => {
+                        var dataW = [data.x - 100, data.y + 80, parseInt(data.number + i * 0)]
+                        datER1.push(dataW)
+                    })
+                    heatMap.setData(datER1);
+
+
+                },
+                error: function () {
+                    console.log('error')
+                }
+            })
+
+            heatTime = setInterval(function () {
+                $.ajax({
+                    type: "get",
+                    url: urlAll + "/heatingpower",
+                    dataType: "json",
+                    jsonpCallback: "callback",
+                    success: function (data) {
+                        var datER = [];
+                        data.forEach((data, i) => {
+                            var dataW = [data.x - 100, data.y + 80, parseInt(data.number + i * 0)]
+                            datER.push(dataW)
+                        })
+                        heatMap.setData(datER);
+
+
+                    },
+                    error: function () {
+                        console.log('error')
+                    }
+                })
+            }, 10000)
+        } else {
+            clearInterval(heatTime)
+            heatMap.destroy()
+        }
+    })
+
+
+
+    app.on(THING.EventType.MouseEnter, '.Marker', function (ev) {
+        ev.object.style.outlineColor = '#FF0000';
+        ev.object.style.color = "#00ff00"
+    });
+    // 鼠标离开物体边框取消
+    app.on(THING.EventType.MouseLeave, '.Marker', function (ev) {
+        ev.object.style.outlineColor = null;
+        ev.object.style.color = null
+    });
+
+    //设备定位
+    $(document.body).on("click", ".seBeName", function () {
+        const typeId = $(this).attr("type")
+        //console.log(111)
+        const objectApp = app.query(typeId)[0]
+        app.camera.flyTo({
+            object: objectApp, // 飞行到的对象
+            time: 2 * 1000, // 飞行时间
+            complete: function () {
+                // console.log('飞行结束');
+            }
+        });
+    })
+
+
+    $(document.body).on("click", ".guiJIPeople", function () {
+        var id = $(this).attr("id");
+        var name = $(this).attr("name")
+        //("wweeee")
+        timeData(id, name)
+    })
+
+
+    // app.level.change(app.query('[id=习艺车间1]')[0].floors[0])
+    // app.camera.fit(app.query('[id=习艺车间1]')[0].floors[0].query('#101')[0])
+    // app.query(/SXT/).forEach(function (obj) {
+    //     console.log("查询", obj.parent.id)
+    // })
+
+
+
+
+    //跟随组
+
+
+})
+
+
+
+function createUIAnchorGEN(obj, value) {
+    // 创建widget (绑定数据用)
+    var panel = new THING.widget.Panel({
+        // 设置面板宽度
+        width: '250px',
+        // cornerType 角标样式
+        // 没有角标 none ，没有线的角标 noline ，折线角标 polyline
+        cornerType: 'polyline'
+
+    })
+
+    // 绑定物体身上相应的属性数据
+
+    panel.addString(value, 'zuHAo').caption('跟随组');
+    panel.addString(value, 'start_position').caption('起点');
+    panel.addString(value, 'end_position').caption('终点');
+    //panel.addString(obj.userData, 'power').caption('马力');
+
+
+    // 创建UIAnchor面板
+    var uiAnchor = app.create({
+        // 类型
+        type: 'UIAnchor',
+        // 父节点设置
+        parent: obj,
+        // 要绑定的页面的 element 对象
+        element: panel.domElement,
+        // 设置 localPosition 为 [0, 0, 0]
+        localPosition: [0, 0, 0],
+        // 指定页面的哪个点放到localPosition位置上(百分比)
+        pivot: [-0.2, 1.5]
+    });
+    $(".span1").css("width", "25%");
+    $(".span2").css("width", "75%");
+
+    return uiAnchor;
+}
+
+
+
+
+function ty() {
+    $("#fenceCreate").click(function () {
+
+        //console.log("111")
+
+        // app.on('mousedown', function (ev) {
+        //     if (ev.button == 0) {
+
+        //         // 关闭摄像机默认交互
+        //         app.camera.inputEnabled = false;
+        //         // 开启框选
+        //         app.picker.startAreaPicking({
+        //             x: ev.x,
+        //             y: ev.y
+        //         });
+        //         // 鼠标拾取物体显示边框
+        //         app.on(THING.EventType.Pick, '.Thing', function (ev) {
+        //             ev.object.style.outlineColor = '#FF0000';
+        //         }, 'myPick');
+        //     }
+        // });
+
+        // // 鼠标左键抬起结束框选操作
+        // app.on('mouseup', function (ev) {
+        //     if (ev.button == 0) {
+        //         // 关闭框选
+        //         app.picker.endAreaPicking();
+        //         app.off(THING.EventType.Pick, '.Thing', 'myPick');
+        //         // 恢复摄像机默认交互
+        //         app.camera.inputEnabled = true;
+        //     }
+        // });
+
+    })
+
+}
+
+// -----------------------------------------
+
+
+function addHTML() {
+    //console.log(1)
+    //console.log($('body'))
+    THING.Utils.dynamicLoad(['/uploads/wechat/bWVzb255Y2hpZA==/file/demo/resource/ViewChoose.css', '/uploads/wechat/bWVzb255Y2hpZA==/file/demo/resource/DataChoose.css', '/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/1.css', '/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/a.js', '/uploads/wechat/bWVzb255Y2hpZA==/file/demo/resource/ViewName.css'], function () {
+        var html1 = `<div id="choose-view" class="z-index1">
+            <div class="title">跳转视角选择</div>
+            <select id="select"></select>
+            <div class="list-btn">
+                <button id="view-confirm" class="view-sub">确定</button>
+                <button id="view-cancel" class="view-sub">取消</button>
+            </div>
+        </div>`
+        $('body').append(html1)
+        $('#choose-view').hide()
+        $('.view-sub').click(function () {
+            if (this.id === 'view-confirm') {
+                var name = $("#select option:selected").val();
+                jump_angle(name)
+            }
+            $('#mask').hide()
+            $('#choose-view').hide()
+        })
+
+        var add_html = `<div id="mask"></div>
+        <div id="add-html" class="z-index1">
+            <div class="title fz">设置视角名称</div>
+            <div class="main">
+                <span class="fz">名称：</span>
+                <span><input id="angle-name" class="fz" type="text"></span>
+            </div>
+            <div style="text-align: center;margin-top: 30px">
+                <button id="add-confirm" class="add-sub">确定</button>
+                <button id="add-cancel" class="add-sub">取消</button>
+            </div>
+        </div>`
+        $('body').append(add_html)
+        $('#add-html').hide()
+        $('#mask').hide()
+        name_input = $('#angle-name')
+        // console.log('name', name_input)
+
+        $('.add-sub').click(function () {
+            if (this.id === 'add-confirm') {
+                camera_view()
+            }
+            $('#mask').hide()
+            $('#add-html').hide()
+        })
+
+        var aHTML = `<div class="left_fixed" style="z-index:1">
+        <div class="nav_point" id='backTo'>
+            <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/20190326.png" alt="" title="退出">退出
+        </div>
+        <div id="goHome">
+            <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/首页.png" alt="" title="首页">首页
+        </div>
+    </div>
+    <div class="nav" style="z-index:1">
+        <div style="width:485px" class="nav_poa_top">
+            <div class="nav_cont nav_point" id="btns" title="透明">
+                <div class="nav_show">
+                    <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/菱形111.png" alt="" class="nav_show">透明
+                </div>
+                <div class="nav_hide">
+                    <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/菱形11.png" alt="" class="nav_show">透明
+                </div>
+            </div>
+            <div class="nav_cont nav_point" title="建筑信息" id="nbtn">
+                <div class="nav_show">
+                    <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/菱形111.png" alt="" class="nav_show">建筑信息
+                </div>
+                <div class="nav_hide">
+                    <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/菱形11.png" alt="" class="nav_hide">建筑信息
+                </div>
+            </div>
+            <div class="nav_cont nav_point" id="btn">
+                <div class="nav_show">
+                    <img title="3D" src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/菱形111.png" alt=""><span>3D</span>
+                </div>
+                <div class="nav_hide">
+                    <img title="2D" src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/菱形11.png" alt=""><span>2D</span>
+                </div>
+            </div>
+            <div class="nav_cont nav_point" title="视角锁定" id="view_a">
+                <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/菱形111.png" alt="">视角锁定
+            </div>
+            <div class="nav_cont nav_point" title="视角跳转" id="view_b">
+                <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/菱形111.png" alt="">视角跳转
+            </div>
+             <div class="nav_cont nav_point" title="热力图" id="view_r">
+                <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/菱形111.png" alt="">热力图
+            </div>
+        </div>
+        <div class="nav_center">
+            <div>主菜单</div>
+            <div>子菜单</div>
+        </div>
+        <div class="nav_left" id="NavLeft">
+            <div onclick="clickTab(this)" class="nav_cont nav_point choosed" title="人员" id="personMenu">
+                <img src='/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/人员1.png' alt="">
+            </div>
+            <div onclick="clickTab(this)" class="nav_cont nav_point" title="设备" id="sbMenu">
+                <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/shebei.png" alt="">
+            </div>
+            <div onclick="clickTab(this)" class="nav_cont nav_point" title="告警" id="alarmMenu">
+                <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/警报.png" alt="">
+            </div>
+            <div onclick="clickTab(this)" class="nav_cont nav_point" title="指挥" id="commandMenu">
+                <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/电话.png" alt="">
+            </div>
+            <div onclick="clickTab(this)" class="nav_cont nav_point" title="电子围栏" id="fenceMenu">
+                <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/电子围栏.png" alt="">
+            </div>
+        </div>
+        <!-- <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/菱形1.png" class="nav_poa" alt=""> -->
+        <div class="por">
+            <div class="left"></div>
+            <img class="center" src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/菱形20.png" alt="">
+            <div class="right"></div>
+        </div>
+        <!--  子功能项  -->
+        <div class="nav_right_cont">
+            <div class="nav_right">
+                <div class="nav_cont nav_point" title="搜索" id="crewSearch">
+                    <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/sousuo.png" alt="">
+                </div>
+                <div class="nav_cont nav_point" title="警察" id="personShow1">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/警察.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/警察11.png" alt="">
+                    </div>
+                </div>
+                <div class="nav_cont nav_point" title="犯人" id="personShow2">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/押解犯人.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/押解犯人11.png" alt="">
+                    </div>
+                </div>
+                <div class="nav_cont nav_point" title="外来人员" id="personShow3">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/人员.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/人员11.png" alt="">
+                    </div>
+                </div>
+            </div>
+            <div class="nav_right">
+                <div class="nav_cont nav_point" title="搜索" id="eqSearch">
+                    <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/sousuo.png" alt="">
+                </div>
+                <div class="nav_cont nav_point" title="监控" id="SXT">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/摄像头.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/摄像头11.png" alt="">
+                    </div>
+                </div>
+                <div class="nav_cont nav_point" title="基站" id="JZ">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/基站.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/基站11.png" alt="">
+                    </div>
+                </div>
+                <div class="nav_cont nav_point" title="门禁" id="MJ">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/门禁.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/门禁11.png" alt="">
+                    </div>
+                </div>
+                <div class="nav_cont nav_point" title="车禁" id="CJ">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/车.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/车11.png" alt="">
+                    </div>
+                </div>
+                <div class="nav_cont nav_point" title="一键报警" id="YJBJ">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/一键.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/一键11.png" alt="">
+                    </div>
+                </div>
+                <div class="nav_cont nav_point" title="设备拖拽" id="drag">
+                    <div class="nav_show">
+                        <img src='/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/aa/drag2.png' alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src='/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/aa/drag1.png' alt="">
+                    </div>
+                </div>
+                <div class="nav_cont nav_point" title="图表展示" id="chartShow">
+                    <div class="nav_show">
+                        <img src='/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/aa/chart2.png' alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src='/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/aa/charts1.png' alt="">
+                    </div>
+                </div>
+            </div>
+            <div class="nav_right">
+                <div class="nav_cont nav_point" title="搜索" id="warningSearch">
+                    <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/sousuo.png" alt="">
+                </div>
+                <div class="nav_cont nav_point" title="当前告警" id="currentWarning">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/警告111.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/警告1111.png" alt="">
+                    </div>
+                </div>
+                <div class="nav_cont nav_point" title="历史告警" id="historyWarning">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/历史警告.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/历史警告11.png" alt="">
+                    </div>
+                </div>
+            </div>
+            <div class="nav_right">
+                <div class="nav_cont nav_point" title="搜索" id="commSearch">
+                    <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/sousuo.png" alt="">
+                </div>
+                <div class="nav_cont nav_point" title="语音通话" id="voiceCalls">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/语音.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/语音11.png" alt="">
+                    </div>
+                </div>
+                <div class="nav_cont nav_point" title="视频通话" id="videoCalls">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/视频通话.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/视频通话11.png" alt="">
+                    </div>
+                </div>
+            </div>
+            <div class="nav_right">
+                <div class="nav_cont nav_point" title="搜索" id="fenceSearch">
+                    <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/sousuo.png" alt="">
+                </div>
+                <div class="nav_cont nav_point" title="创建" id="fenceCreate">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/创建.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/创建11.png" alt="">
+                    </div>
+                </div>
+                <div class="nav_cont nav_point" title="删除" id="fenceDel">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/删除.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/删除11.png" alt="">
+                    </div>
+                </div>
+                <div class="nav_cont nav_point" title="当前告警" id="fenceCurrent">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/警告111.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/警告1111.png" alt="">
+                    </div>
+                </div>
+                <div class="nav_cont nav_point" title="历史告警" id="fenceHistory">
+                    <div class="nav_show">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/历史警告.png" alt="">
+                    </div>
+                    <div class="nav_hide">
+                        <img src="/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/历史警告11.png" alt="">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+</div>`
+        $('body').append(aHTML)
+    })
+}
+
+
+var yj_i = cj_i = mj_i = jz_i = sxt_i = perS2_i = perS3_i = perS1_i = tran_i = build_i = view_a_i = view_b_i = view_i = false
+var dg_i = crew_i2 = eq_i = crew_i = com_i = vc_i = vdc_i = cw_i = hw_i = fc_i = fh_i = crew_i1 = false
+function ckickAction() {
+    $("#fenceCreate").click(function () {
+        app.camera.viewMode = THING.CameraView.TopView;
+        //console.log("111")
+        app.resumeEvent('mousedown', null, '电子围栏框选创建开始')
+        app.resumeEvent('mouseup', null, '电子围栏框选创建结束')
+
+    })
+    $('#drag').click(function () {
+        dg_i = !dg_i
+        changeInto('dg', dg_i)
+    })
+    $('#fenceHistory').click(function () {
+        fh_i = !fh_i
+        changeInto('w2', fh_i)
+    })
+    $('#fenceCurrent').click(function () {
+        fc_i = !fc_i
+        changeInto('w1', fc_i)
+    })
+    $('#historyWarning').click(function () {
+        hw_i = !hw_i
+        changeInto('w2', hw_i)
+    })
+    $('#currentWarning').click(function () {
+        cw_i = !cw_i
+        changeInto('w1', cw_i)
+    })
+    $('#videoCalls').click(function () {
+        vdc_i = !vdc_i
+        changeInto('vc2', vdc_i)
+    })
+    $('#voiceCalls').click(function () {
+        vc_i = !vc_i
+        changeInto('vc1', vc_i)
+    })
+    $('#commSearch').click(function () {
+        com_i = !com_i
+        changeInto('coms', com_i)
+    })
+    $('#btns').click(function () {
+        tran_i = !tran_i
+        changeInto('tran', tran_i)
+    })
+
+    $('#goHome').click(function () {
+        app.level.change(app.root.defaultCampus)
+    })
+    $('#backTo').click(function () {
+        var object = app.level.current
+
+        app.level.back()
+        if (object instanceof THING.Building) {
+            // console.log(111222333)
+            // console.log(t1,p1)
+            app.camera.flyTo({
+                position: p1,
+                target: t1,
+                time: 2000
+            });
+            t1 = p1 = null
+
+        }
+
+        var object = app.level.current
+        if (object instanceof THING.Building) {
+            app.query('.Building').visible = true
+        }
+    })
+    $('#nbtn').click(function () {
+        build_i = !build_i
+        changeInto('build', build_i)
+    })
+
+    $('#btn').click(function () {
+        view_i = !view_i
+        changeInto('view', view_i)
+    })
+
+    $('#view_a').click(function () {
+        view_a_i = !view_a_i
+        changeInto('view_a', view_a_i)
+    })
+    $('#view_b').click(function () {
+        view_b_i = !view_b_i
+        changeInto('view_b', view_b_i)
+    })
+    $('#personShow1').click(function () {
+        perS1_i = !perS1_i
+        changeInto('perS1', perS1_i)
+    })
+    $('#personShow2').click(function () {
+        perS2_i = !perS2_i
+        changeInto('perS2', perS3_i)
+    })
+    $('#personShow3').click(function () {
+        perS3_i = !perS3_i
+        changeInto('perS3', perS3_i)
+    })
+    $('#SXT').click(function () {
+        sxt_i = !sxt_i
+        changeInto('sxt', sxt_i)
+    })
+    $('#MJ').click(function () {
+        mj_i = !mj_i
+        changeInto('mj', mj_i)
+    })
+    $('#CJ').click(function () {
+        cj_i = !cj_i
+        changeInto('cj', cj_i)
+    })
+    $('#JZ').click(function () {
+        jz_i = !jz_i
+        changeInto('jz', jz_i)
+    })
+    $('#YJBJ').click(function () {
+        yj_i = !yj_i
+        changeInto('yjbj', yj_i)
+    })
+    $('#personMenu').click(function () {
+        $('#personChoose').show()
+        $('#addPloice12').hide()
+        $('#sbChoose').hide()
+        $('#addPloice13').hide()
+        alarmHide()
+        commandHide()
+        sbHide()
+        fenceHide()
+
+    })
+    $('#sbMenu').click(function () {
+        $('#personChoose').hide()
+        $('#sbChoose').show()
+        $('#addPloice12').hide()
+        $('#addPloice13').hide()
+
+        personHide()
+        alarmHide()
+        commandHide()
+        fenceHide()
+        //console.log("11")
+    })
+
+    $('#alarmMenu').click(function () {
+        $('#personChoose').hide()
+        $('#sbChoose').hide()
+        $('#addPloice13').hide()
+        $('#addPloice12').show()
+        personHide()
+        sbHide()
+        //alarmHide()
+        fenceHide()
+        commandHide()
+        // console.log("111")
+    })
+
+
+    $('#commandMenu').click(function () {
+        personHide()
+        sbHide()
+        fenceHide()
+        alarmHide()
+    })
+    $('#fenceMenu').click(function () {
+        $('#personChoose').hide()
+        $('#addPloice12').hide()
+        $('#sbChoose').hide()
+        $('#addPloice13').show()
+        personHide()
+        alarmHide()
+        commandHide()
+        sbHide()
+    })
+    $('#eqSearch').click(function () {
+        eq_i = !eq_i
+        changeInto('eS', eq_i)
+    })
+    $('#crewSearch').click(function () {
+        crew_i = !crew_i
+        changeInto('cS', crew_i)
+    })
+    $('#warningSearch').click(function () {
+        crew_i1 = !crew_i1;
+        addPostSou2(numbee)
+        changeInto('cS1', crew_i1)
+    })
+    $('#fenceSearch').click(function () {
+        crew_i2 = !crew_i2
+        changeInto('cS2', crew_i2)
+    })
+}
+
+function changeInto(key, boolValue) {
+    if (key === 'tran') {
+        if (boolValue) {
+            app.query('.Building').style.opacity = 0.3
+            app.query('.Building').style.color = '#4169E1'
+        } else {
+            app.query('.Building').style.opacity = 1
+            app.query('.Building').style.color = null
+        }
+    } else if (key === 'build') {
+        if (buildThing) {
+            buildThing.showUI(false)
+            buildThing = null
+        }
+        buildList.forEach(function (obj) {
+            obj.showUI(boolValue)
+        })
+    } else if (key === 'view') {
+        if (boolValue) {
+            app.query('地平线').visible = false
+            app.camera.viewMode = THING.CameraView.TopView;
+            //box_choose()
+        } else {
+            app.query('地平线').visible = true
+            app.camera.viewMode = THING.CameraView.Normal;
+            app.off('mousedown', null, '按下左键进行框选');
+            app.off('mouseup', null, '抬起左键结束框选');
+        }
+    } else if (key === 'view_a') {
+        // console.log(1)
+        $('#mask').show()
+        $('#add-html').show()
+    } else if (key === 'view_b') {
+        $('#mask').show()
+        $('#choose-view').show()
+    } else if (key === 'perS1') {
+        //console.log("11111")
+        person_object.forEach(function (obj) {
+            obj.showUI(boolValue)
+        })
+        if (!boolValue) {
+            person_object.forEach(function (obj) {
+                if (obj.ui) {
+                    obj.ui.destroy()
+                    obj.ui = null
+                }
+            })
+        }
+    } else if (key === 'perS2') {
+        prisoner_object.forEach(function (obj) {
+            obj.showUI(boolValue)
+        })
+        if (!boolValue) {
+            prisoner_object.forEach(function (obj) {
+                if (obj.ui) {
+                    obj.ui.destroy()
+                    obj.ui = null
+                }
+            })
+        }
+    } else if (key === 'perS3') {
+        outsider_object.forEach(function (obj) {
+            obj.showUI(boolValue)
+        })
+        if (!boolValue) {
+            outsider_object.forEach(function (obj) {
+                if (obj.ui) {
+                    obj.ui.destroy()
+                    obj.ui = null
+                }
+            })
+        }
+    } else if (key === 'sxt') {
+        videoList.forEach(function (obj) {
+            obj.showUI(boolValue)
+        })
+        if (!boolValue) {
+            videoList.forEach(function (obj) {
+                if (obj.ui) {
+                    obj.ui.destroy()
+                    obj.ui = null
+                }
+                if (obj.videoFrame) {
+                    obj.videoFrame.destroy()
+                    obj.videoFrame = null
+
+                }
+            })
+        }
+    } else if (key === 'jz') {
+        //console.log('基站', jzList.length)
+        jzList.forEach(function (obj) {
+            obj.showUI(boolValue)
+        })
+        if (!boolValue) {
+            jzList.forEach(function (obj) {
+                if (obj.ui) {
+                    obj.ui.destroy()
+                    obj.ui = null
+                }
+            })
+        }
+
+    } else if (key === 'cj') {
+        // console.log('车禁', cjList.length)
+        cjList.forEach(function (obj) {
+            obj.showUI(boolValue)
+        })
+        if (!boolValue) {
+            if (!boolValue) {
+                cjList.forEach(function (obj) {
+                    if (obj.ui) {
+                        obj.ui.destroy()
+                        obj.ui = null
+                    }
+                })
+            }
+        }
+    } else if (key === 'yjbj') {
+        // console.log('一键报警', yjList.length)
+        yjList.forEach(function (obj) {
+            obj.showUI(boolValue)
+        })
+        if (!boolValue) {
+            if (!boolValue) {
+                yjList.forEach(function (obj) {
+                    if (obj.ui) {
+                        obj.ui.destroy()
+                        obj.ui = null
+                    }
+                })
+            }
+        }
+    } else if (key === 'mj') {
+        //console.log('门禁', mjList.length)
+        mjList.forEach(function (obj) {
+            obj.showUI(boolValue)
+        })
+        if (!boolValue) {
+            if (!boolValue) {
+                mjList.forEach(function (obj) {
+                    if (obj.ui) {
+                        obj.ui.destroy()
+                        obj.ui = null
+                    }
+                })
+            }
+        }
+    } else if (key === 'eS') {
+        if (boolValue) {
+            $('#sbSearh').addClass('upinput')
+            $('#sbSearh').show()
+        } else {
+            $('#sbSearh').removeClass('upinput')
+            $('#sbSearh').hide()
+        }
+    } else if (key === 'cS') {
+        if (boolValue) {
+            $('#perSearch').addClass('upinput')
+            $('#perSearch').show()
+        } else {
+            $('#perSearch').removeClass('upinput')
+            $('#perSearch').hide()
+        }
+    } else if (key === 'cS1') {
+        if (boolValue) {
+            $('#w1').hide()
+            $('#w2').hide()
+            $('#perSearch1').addClass('upinput')
+            $('#perSearch1').show()
+        } else {
+            $('#perSearch1').removeClass('upinput')
+            $('#perSearch1').hide()
+        }
+    } else if (key === 'cS2') {
+        if (boolValue) {
+            $('#perSearch2').addClass('upinput')
+            $('#perSearch2').show()
+            $('#w1').hide()
+            $('#w2').hide()
+        } else {
+            $('#perSearch2').removeClass('upinput')
+            $('#perSearch2').hide()
+        }
+    }
+
+    else if (key === 'coms') {
+        if (boolValue) {
+            $('#comSearch').addClass('upinput')
+            $('#comSearch').show()
+        } else {
+            $('#comSearch').removeClass('upinput')
+            $('#comSearch').hide()
+        }
+    } else if (key === 'vc1') {
+        if (boolValue) {
+            $('#vc1').addClass('upinput')
+            $('#vc1').show()
+        } else {
+            $('#vc1').removeClass('upinput')
+            $('#vc1').hide()
+        }
+    } else if (key === 'vc2') {
+        if (boolValue) {
+            $('#vc2').addClass('upinput')
+            $('#vc2').show()
+        } else {
+            $('#vc2').removeClass('upinput')
+            $('#vc2').hide()
+        }
+    } else if (key === 'w1') {
+        if (boolValue) {
+            $('#perSearch2').hide()
+            $('#w2').hide()
+            $('#w1').addClass('upinput')
+            $('#w1').show()
+        } else {
+            $('#w1').removeClass('upinput')
+            $('#w1').hide()
+        }
+    } else if (key === 'w2') {
+        if (boolValue) {
+            $('#perSearch2').hide()
+            $('#w1').hide()
+            $('#w2').addClass('upinput')
+            $('#w2').show()
+        } else {
+            $('#w2').removeClass('upinput')
+            $('#w2').hide()
+        }
+    } else if (key === 'dg') {
+        if (boolValue) {
+            $('#drag-html').show()
+        } else {
+            $('#drag-html').hide()
+            save_Drag_Data(drag_drop_list)
+        }
+    }
+}
+
+function jump_angle(name) {
+    // console.log(view_dic[name].pos, view_dic[name].target)
+    app.camera.flyTo({
+        position: view_dic[name].pos,
+        target: view_dic[name].target,
+        time: 500
+    });
+}
+
+// 判断视角名称组成  字母、数字、下划线组合
+function checkMobile(s) {
+    var regu = /^[0-9a-zA-Z_]{1,}$/;
+    var re = new RegExp(regu);
+    if (re.test(s)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+var view_dic = {}
+function camera_view() {
+    var pos = app.camera.position; //获取摄像机镜头位置
+    var target = app.camera.target; //获取摄像机目标点位置
+    var name = $('#angle-name').val();
+    // console.log(pos, target)
+    var option1 = $('<option value=' + name + '>' + name + '</option>')
+    $('#select').append(option1)
+    view_dic[$('#angle-name').val()] = {
+        pos: pos,
+        target: target
+    }
+    if (checkMobile($('#angle-name').val())) {
+        var angle_data = {
+            'name': $('#angle-name').val(),
+            'position_x': pos[0],
+            'position_y': pos[2],
+            'position_z': pos[1],
+            'target_x': target[0],
+            'target_y': target[2],
+            'target_z': target[1],
+            'create_uid': user_id
+        }
+        $.ajax({
+            'url': urlAll + "/insert/visual_angle", //Ajax请求服务的地址
+            'type': "POST", //请求方式 "POST" 或 "GET"，默认为 "GET"
+            'dataType': "json",    //服务返回的数据类型，推荐使用标准JSON数据格式
+            //发送到服务器的数据
+            'contentType': "application/json; charset=utf-8",
+            'data': JSON.stringify([angle_data]),
+            //请求成功后的回调函数
+            'success': function (data) {
+                //console.log(data)
+                $('#angle-name').val('')
+            },
+            //请求失败时调用的函数 有以下三个参数：XMLHttpRequest 对象、错误信息、（可选）捕获的异常对象
+            'error': function (xhr, status, error) {
+                console.log(xhr);
+            }
+        })
+    } else {
+        alert('视角名称格式错误！！')
+    }
+
+
+
+}
+
+
+// 设备
+var jzList = [], mjList = [], cjList = [], yjList = []
+var sbAllList = []
+function addSBImg() {
+    app.query(/MJ/).forEach(function (mj) {
+        mj.a = '门禁'
+        let mjInfo = new MJ(mj)
+        mjList.push(mjInfo)
+        sbAllList.push(mjInfo)
+    })
+    app.query(/CJ/).forEach(function (cj) {
+        cj.a = '车禁'
+        let cjInfo = new CJ(cj)
+        // cjInfo.showUI(true)
+        cjList.push(cjInfo)
+        sbAllList.push(cjInfo)
+    })
+    app.query(/YJ/).forEach(function (yj) {
+        yj.a = '一键报警'
+        let yjInfo = new YJ(yj)
+        // yjInfo.showUI(true)
+        yjList.push(yjInfo)
+        sbAllList.push(yjInfo)
+    })
+    // console.log(app.query(/JZ/).length)
+    app.query(/JZ/).forEach(function (jz) {
+        jz.a = '基站'
+        let jzInfo = new JZ(jz)
+        // jzInfo.showUI(true)
+        jzList.push(jzInfo)
+        sbAllList.push(jzInfo)
+    })
+}
+
+// 人员图标
+var personJC = [], personFR = [], personWL = []
+var personAllList = []
+function addPersonimg() {
+    app.query(/People/).forEach(function (peole) {
+        //console.log(peole.userData)
+        let person = new Person(peole)
+        personAllList.push(person)
+        if (peole.userData.type === '警察') {
+            personJC.push(person)
+        } else if (peole.userData.type === '犯人') {
+            personFR.push(person)
+        } else {
+            personWL.push(person)
+        }
+
+    })
+    // console.log('犯人', personFR.length)
+    // console.log('外来', personWL.length)
+}
+
+// 摄像头图标
+var videoList = [];
+function addVideoInfo() {
+    app.query(/SXT/).forEach(function (sxt) {
+        let video = new VideoCamera(sxt)
+        videoList.push(video)
+    })
+}
+
+// 层级初始化
+function intoBuild() {
+    app.pauseEvent(THING.EventType.LeaveLevel, '.Campus', THING.EventTag.LevelSceneOperations);
+    app.pauseEvent(THING.EventType.EnterLevel, '.Building', THING.EventTag.LevelSetBackground);
+    app.pauseEvent(THING.EventType.EnterLevel, '.Floor', THING.EventTag.LevelSetBackground);
+    //  停止进入物体层级的默认行为
+    app.pauseEvent(THING.EventType.EnterLevel, '.Thing', THING.EventTag.LevelSceneOperations);
+    // 暂停单击返回上一层级功能
+    app.pauseEvent(THING.EventType.Click, '*', THING.EventTag.LevelBackOperation);
+
+}
+
+// 进入建筑
+function gotoBuild() {
+    app.on('DBLclick', '楼', function (ev) {
+        var object = ev.object;
+        if (app.level.current instanceof THING.Campus) {
+            t1 = app.camera.target
+            p1 = app.camera.position
+        }
+        linkage(object.id)
+        app.level.change(object)
+        app.query('.Building').visible = true
+    }, 'customEnterLevel');
+
+    app.on('DBLclick', '.Floor||.Room', function (ev) {
+        var object = ev.object;
+        linkage(object.id)
+        app.level.change(object)
+    })
+}
+
+// 联动
+function linkage(id) {
+    var ssss = $('#' + id).next().attr('class')
+    // console.log(ssss)
+    $('#' + id).siblings('.' + ssss).slideToggle();
+    $('#' + id).parent().siblings().find("." + ssss).slideUp();
+}
+
+// 建筑信息
+var buildList = []
+function addBuidInfo() {
+    app.query('.Building').forEach(function (build) {
+        let buildInfo = new Build(build)
+        buildList.push(buildInfo)
+    })
+}
+
+app.on('click', '楼', function (ev) {
+    if (ev.button === 2) {
+        var a = this
+        if (this.isExpandBuilding) {
+            a.unexpandFloors({
+                'time': 500,
+                'complete': function () {
+                    //console.log('合并');
+                    a.isExpandBuilding = false;
+                }
+            })
+        } else {
+            this.expandFloors({
+                'time': 1000,
+                'length': 10,
+                'horzMode': false,
+                'hideRoof': true,
+                'complete': function () {
+                    a.isExpandBuilding = true;
+                }
+            })
+        }
+    }
+}, '建筑外楼层展开')
+
+
+function addIndexHTML() {
+    THING.Utils.dynamicLoad(['/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/g.css'], function () {
+        var personHTML = `<div class="navigation_bar" id="personChoose">
+    <div class="title_two">
+        <div class="title_a active" onclick="returnHome()">区域</div>
+        <div class="title_b">人员分类</div>
+    </div>
+    <div style="display: block;" class="tree" id="main_a">
+
+    </div>
+    <div style="display: none;" class="tree" id="main_b">
+
+    </div>
+</div>`
+
+        $('body').append($(personHTML))
+        $('#personChoose').hide()
+    })
+}
+
+
+
+
+var numberY = 0, numberF = 0, numberW = 0;
+function postPloice(data) {
+    $.ajax({
+        'url': urlAll + "/realtimeallinfo", //Ajax请求服务的地址
+        'type': "POST", //请求方式 "POST" 或 "GET"，默认为 "GET"
+        'dataType': "json",    //服务返回的数据类型，推荐使用标准JSON数据格式
+        //发送到服务器的数据
+        'contentType': "application/json; charset=utf-8",
+        'data': data,
+        //请求成功后的回调函数
+        'success': function (data) {
+            //console.log(data)
+            //gold_thing_showUI(data)
+
+            var object = app.query('[id=' + data[0].device_id + ']')[0]
+            gold_thing_showUI(object)
+        },
+        //请求失败时调用的函数 有以下三个参数：XMLHttpRequest 对象、错误信息、（可选）捕获的异常对象
+        'error': function (xhr, status, error) {
+            console.log(xhr);
+        }
+    })
+
+}
+
+
+function postName(type, that) {
+
+    var data = JSON.stringify([{ "type": type }])
+
+    $.ajax({
+        'url': urlAll + "/personlisquery", //Ajax请求服务的地址
+        'type': "POST", //请求方式 "POST" 或 "GET"，默认为 "GET"
+        'dataType': "json",    //服务返回的数据类型，推荐使用标准JSON数据格式
+        //发送到服务器的数据
+        'contentType': "application/json; charset=utf-8",
+        'data': data,
+        //请求成功后的回调函数
+        'success': function (data) {
+            var dateName = $(that).next()
+            $("domeLi").remove();
+            data.forEach((date, i) => {
+                var tree4 = $('<li class="domeLi"><h4 class="thing_name ploiceThing" type="' + type + '" onclick="clickPlane(this)" id="' + date.name + '">' + date.name + '</h4></li>')
+                $(dateName).append(tree4)
+            })
+            //$(".tree_one").css("display","none");
+            //console.log("1111")
+            dateName.toggle()
+            $(".ploiceThing").on("click", function () {
+                const type = $(this).attr("type");
+                const name = $(this).attr("id");
+                const date = JSON.stringify([{
+                    "ptype": type,
+                    "username": name
+                }])
+            })
+        },
+        //请求失败时调用的函数 有以下三个参数：XMLHttpRequest 对象、错误信息、（可选）捕获的异常对象
+        'error': function (xhr, status, error) {
+            console.log(xhr);
+        },
+    });
+
+}
+
+
+
+function shiSHi() {
+    $.ajax({
+        type: "get",
+        url: urlAll + "/personnumquery",
+        dataType: "json",
+        jsonpCallback: "callback",
+        success: function (data) {
+            const classNam = ".domeShu"
+            // console.log('拉取数据', data)
+            data.forEach((date, i) => {
+                const classN = classNam + date.type
+                $(classN).text(date.number[0].count)
+            })
+
+
+        },
+        error: function () {
+            console.log('error')
+        }
+    })
+}
+
+
+function domeMAJAXPost() {
+    var timerWeiLan = setInterval(function () {
+        $.ajax({
+            type: "get",
+            url: urlAll + "/fence_data/list",
+            dataType: "json",
+            jsonpCallback: "callback",
+            success: function (data) {
+                //console.log('围栏数据', data)
+                //addDate(data)
+                if (data) { create_Fences(data) }
+            },
+            error: function () {
+                console.log('error')
+            }
+        })
+    }, 1000)
+
+
+}
+// timeData()
+function timeData(deviceId, name) {
+    //console.log("111weeee")
+    crew_i = !crew_i
+    changeInto('cS', crew_i)
+    $("#peopleGuiji").remove();
+    THING.Utils.dynamicLoad(['/uploads/wechat/emhhbmdDaGVuZw==/file/demo2000/laydate/laydate.js'], function () {
+        var sbHTML1 = `<div id="peopleGuiji" style="position:absolute;left:520px;top:20px;padding: 8px;width:300px;text-align: center;background: rgba(0,0,0,0.5);height:300px;z-index:100;border-radius: 5px 5px;" class="timerType" id="sbType">
+                   <div style="color:#fff;margin-bottom: 10px;"><p style="text-align: left; margin-left: 70px;margin-top:25px">编号：<span>`+ deviceId + `</p></span></div>
+                   <div style="color:#fff;margin-bottom: 10px;"><p style="text-align: left; margin-left: 70px;">姓名：<span>${name}</p></span></div>
+                   <div style="color:#fff;margin-bottom: 10px;">开始时间：<input style="background:none;border: 1px solid #fff;border-radius: 5px 5px;height: 20px;width: 135px;" type="text" id="test1"></div>
+                   <div style="color:#fff;margin-bottom: 10px;">结束时间：<input style="background:none;    border: 1px solid #fff;border-radius: 5px 5px;height: 20px;width: 135px;"  type="text" id="test2"></div>
+                   <div style="color:#fff;margin-bottom: 10px;"> <button style="width: 65px;height: 25px;margin-right: 15px;" class="guijiPeople1">确定</button><button style="width: 65px;height: 25px;margin-right: 15px;" class="guijiPeople2">取消</button></div>
+                 
+             </div>`
+        $('body').append($(sbHTML1))
+
+        laydate.render({
+            elem: '#test1'
+            , type: 'datetime'
+        });
+        laydate.render({
+            elem: '#test2'
+            , type: 'datetime'
+        });
+
+
+        $(".guijiPeople2").on("click", function () {
+            $("#peopleGuiji").remove();
+        })
+
+
+
+        $(".guijiPeople1").on("click", function () {
+            //deviceId
+            // var dataTime =[{
+            //     "device_id":deviceId,
+            //     "create_time":$("#test1").val(),
+            //     "end_time":$("#test2").val(),}]
+
+            var dataTime = [{
+                "device_id": "HSY20006",
+                "create_time": "2019-05-21 17:13:11",
+                "end_time": "2019-05-22 17:13:11",
+            }]
+
+            var data = JSON.stringify(dataTime)
+            ajaxPost(data)
+        })
+
+    })
+
+
+
+
+}
+
+
+
+var t1, p1
+
+
+function louCengAll() {
+    var className = "louYu";
+    $.ajax({
+        type: "get",
+        url: urlAll + "/query/buildingnumber",
+        dataType: "json",
+
+        success: function (data) {
+            //console.log(data+"2222222")
+            for (let j = 0; j < data.length; j++) {
+                var classLou = className + data[j].id;
+
+                // var build = builds[j]
+                var b_number = 0
+                var tree1 = $('<div class="tree_box"></div>')
+                var tree3 = $('<ul class="tree_one"></ul>')
+                // var floors = build.query('.Floor').add(app.query(/People/).query('[parent/id=' + build.id + ']'))
+                var li1;
+                for (var i = 0, flors = data[j].room; i < flors.length; i++) {
+                    var flors
+                    var classFlor = className + flors[i].id;
+                    //  var li3 = $('<li></li>')
+                    //  var h5 = $('<h5 class="tree_name" id="' + room.id + '">' + treeName + '(' + r_number + ')' + '</h5>')
+                    //              li3.append(h5)
+                    //             li3.append(ul2)
+                    //             ul.append(li3)
+                    li1 = $('<li></li>')
+                    var treeName;
+                    var tree4 = $('<h5 class="tree_name" onclick="clickPlane(this)" id="' + flors[i].name + '">' + flors[i].name + '(<span class="' + classFlor + '">' + flors[i].number + '</span>)' + '</h5>')
+                    li1.append(tree4)
+                    // if (floors[i].userData.username) {
+                    //     treeName = floors[i].userData.username
+                    //     b_number++
+                    //     var tree4 = $('<h4 class="thing_name" onclick="clickPlane(this)" id="' + floors[i].id + '">' + treeName + '</h4>')
+                    //     li1.append(tree4)
+                    // } else {
+                    //     var num = i + 1;
+                    //     var fName = '第' + num + '层';
+                    //     var f_number = app.query(/People/).query('[parent/id=' + floors[i].id + ']').length
+                    //     var ul = $('<ul class="tree_two"></ul>')
+                    //     floors[i].query('.Room').add(app.query(/People/).query('[parent/id=' + floors[i].id + ']')).forEach(function (room) {
+
+                    //         if (room.userData.username) {
+                    //             treeName = room.userData.username
+                    //             b_number++
+                    //             var li3 =$('<li></li>')
+                    //             var h5 = $('<h5 class="thing_name" onclick="clickPlane(this)" id="' + room.id + '">' + treeName + '</h5>')
+                    //             li3.append(h5)
+                    //             ul.append(li3)
+                    //         } else {
+                    //             treeName = room.id
+                    //             var r_number = app.query(/People/).query('[parent/id=' + room.id + ']').length
+                    //             var ul2 = $('<ul class="tree_three"></ul>')
+                    //             app.query(/People/).query('[parent/id=' + room.id + ']').forEach(function (p) {
+                    //                 var li2 = $('<li id=1 class="thing_name" onclick="clickPlane(this)">Tom</li>')
+                    //                 ul2.append(li2)
+                    //                 f_number++
+                    //                 b_number++
+                    //             })
+                    //             var li3 = $('<li></li>')
+                    //             var h5 = $('<h5 class="tree_name" id="' + room.id + '">' + treeName + '(' + r_number + ')' + '</h5>')
+                    //             li3.append(h5)
+                    //             li3.append(ul2)
+                    //             ul.append(li3)
+                    //         }
+
+
+                    //     })
+
+                    //     var tree4 = $('<h4 class="tree_name" id="' + floors[i].id + '">' + fName + '(' + f_number + ')' + '</h4>')
+                    //     li1.append(tree4)
+                    // }
+
+
+
+                    //li1.append(ul)
+                    tree3.append(li1)
+                }
+                var tree2 = $('<h3 class="tree_name build_name" id="' + data[j].name + '">' + data[j].name + '(<span class="' + classLou + '">' + data[j].number + '</span>)' + '</h3>')
+                tree1.append(tree2)
+                tree1.append(tree3)
+                $('#main_a').append(tree1)
+
+            }
+            $('.tree_name').click(function () {
+                var thingID = $(this).attr('id')
+
+                $('.tree_name').removeClass('choose_color')
+                $(this).addClass('choose_color')
+
+                $(this).next().toggle()
+                app.level.change(app.query('[id=' + thingID + ']')[0])
+                if (app.query('[id=' + thingID + ']')[0] instanceof THING.Building) {
+                    //console.log('进入建筑')
+                    app.query('楼').visible = true
+                }
+            })
+
+            $('#personChoose .build_name').click(function () {
+                //console.log(111222)
+                if (!t1 && !p1) {
+                    // console.log(11221122)
+                    t1 = app.camera.target
+                    p1 = app.camera.position
+                }
+
+            })
+
+
+        },
+        error: function () {
+            console.log('error')
+        }
+    })
+}
+
+
+
+function louCengDom() {
+    var className = ".louYu";
+    $.ajax({
+        type: "get",
+        url: urlAll + "/query/buildingnumber",
+        dataType: "json",
+
+        success: function (data) {
+            //console.log(data+"2222222")
+            for (let j = 0; j < data.length; j++) {
+                var classLou = className + data[j].id;
+                $(classLou).text(data[j].number)
+                for (var i = 0, flors = data[j].room; i < flors.length; i++) {
+
+                    var classFlor = className + flors[i].id;
+                    $(classFlor).text(flors[i].number)
+
+
+
+
+                }
+
+
+            }
+
+        },
+        error: function () {
+            console.log('error')
+        }
+    })
+}
+
+
+
+
+
+var dataQuyu;
+function addDate() {
+    THING.Utils.dynamicLoad(['/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/g.css', '/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/g.js'], function () {
+        var builds = app.query('楼')
+        //var className = "louYu";
+        louCengAll()
+        setInterval(function () {
+            louCengDom()
+        }, 10000)
+
+        // console.log(data+"588954756")
+        // for (let j = 0; j < data.length; j++) {
+        //     var classLou = className+data.id;
+        //     var build = builds[j]
+        //     var b_number = 0
+        //     var tree1 = $('<div class="tree_box"></div>')
+        //     var tree3 = $('<ul class="tree_one"></ul>')
+        //     var floors = build.query('.Floor').add(app.query(/People/).query('[parent/id=' + build.id + ']'))
+        //     var li1;
+        //     for (var i = 0,flors =data[j].floors.length; i <flors; i++) {
+        //         var flors
+        //         var classFlor = className+flors[i].id;
+        //         //  var li3 = $('<li></li>')
+        //         //  var h5 = $('<h5 class="tree_name" id="' + room.id + '">' + treeName + '(' + r_number + ')' + '</h5>')
+        //         //              li3.append(h5)
+        //         //             li3.append(ul2)
+        //         //             ul.append(li3)
+        //         li1 = $('<li></li>')
+        //         var treeName;
+        //          var tree4 = $('<h5 class="tree_name" onclick="clickPlane(this)" id="' + floors[i].id + '">' + floors[i].name + '(<span class="'+classFlor+'">' + floors[i].number + '</span>)'+'</h5>')
+        //         li1.append(tree4)
+        //         // if (floors[i].userData.username) {
+        //         //     treeName = floors[i].userData.username
+        //         //     b_number++
+        //         //     var tree4 = $('<h4 class="thing_name" onclick="clickPlane(this)" id="' + floors[i].id + '">' + treeName + '</h4>')
+        //         //     li1.append(tree4)
+        //         // } else {
+        //         //     var num = i + 1;
+        //         //     var fName = '第' + num + '层';
+        //         //     var f_number = app.query(/People/).query('[parent/id=' + floors[i].id + ']').length
+        //         //     var ul = $('<ul class="tree_two"></ul>')
+        //         //     floors[i].query('.Room').add(app.query(/People/).query('[parent/id=' + floors[i].id + ']')).forEach(function (room) {
+
+        //         //         if (room.userData.username) {
+        //         //             treeName = room.userData.username
+        //         //             b_number++
+        //         //             var li3 =$('<li></li>')
+        //         //             var h5 = $('<h5 class="thing_name" onclick="clickPlane(this)" id="' + room.id + '">' + treeName + '</h5>')
+        //         //             li3.append(h5)
+        //         //             ul.append(li3)
+        //         //         } else {
+        //         //             treeName = room.id
+        //         //             var r_number = app.query(/People/).query('[parent/id=' + room.id + ']').length
+        //         //             var ul2 = $('<ul class="tree_three"></ul>')
+        //         //             app.query(/People/).query('[parent/id=' + room.id + ']').forEach(function (p) {
+        //         //                 var li2 = $('<li id=1 class="thing_name" onclick="clickPlane(this)">Tom</li>')
+        //         //                 ul2.append(li2)
+        //         //                 f_number++
+        //         //                 b_number++
+        //         //             })
+        //         //             var li3 = $('<li></li>')
+        //         //             var h5 = $('<h5 class="tree_name" id="' + room.id + '">' + treeName + '(' + r_number + ')' + '</h5>')
+        //         //             li3.append(h5)
+        //         //             li3.append(ul2)
+        //         //             ul.append(li3)
+        //         //         }
+
+
+        //         //     })
+
+        //         //     var tree4 = $('<h4 class="tree_name" id="' + floors[i].id + '">' + fName + '(' + f_number + ')' + '</h4>')
+        //         //     li1.append(tree4)
+        //         // }
+
+
+
+        //         //li1.append(ul)
+        //         tree3.append(li1)
+        //     }
+        //     var tree2 = $('<h3 class="tree_name build_name" id="' + data.id + '">' + data.name + '(<span class="'+classLou+'">' + data.number + '</span>)' + '</h3>')
+        //     tree1.append(tree2)
+        //     tree1.append(tree3)
+        //     $('#main_a').append(tree1)
+
+        // }
+
+
+
+        // var tree1 = $('<div class="tree_box"></div>')
+        // var tree2 = $('<h3>空地' + '(' + app.query(/People/).query('[parent/id=0]').length + ')' + '</h3>')
+        // tree1.append(tree2)
+        // var tree3 = $('<ul class="tree_one"></ul>')
+        // app.query(/People/).query('[parent/id=0]').forEach(function (obj) {
+        //     var tree4 = $('<li><h4 class="thing_name" onclick="clickPlane(this)" id="' + obj.id + '">' + obj.userData.username + '</h4></li>')
+        //     tree3.append(tree4)
+        // })
+        // tree1.append(tree3)
+        // $('#main_a').append(tree1)
+        $.ajax({
+            type: "get",
+            url: urlAll + "/personnumquery",
+            dataType: "json",
+            jsonpCallback: "callback",
+            success: function (data) {
+                const classNam = "domeShu"
+                // console.log('拉取数据', data)
+                data.forEach((date, i) => {
+                    const claN = classNam + date.type;
+                    var tree1 = $('<div class="tree_box"></div>')
+                    var tree2 = $('<h3 class="domeDivType" type="' + date.type + '">' + date.name + '(<span class="' + claN + '">' + date.number[0].count + '</span>)' + '</h3>')
+                    var tree3 = $('<ul class="tree_one"></ul>')
+                    tree1.append(tree2)
+                    tree1.append(tree3)
+                    $('#main_b').append(tree1)
+                })
+                $(".domeDivType").on("click", function () {
+
+                    // console.log($(this).attr("type"))
+                    postName($(this).attr("type"), this)
+                })
+                setInterval(function () {
+                    shiSHi()
+                }, 1000)
+
+            },
+            error: function () {
+                console.log('error')
+            }
+        })
+
+
+        // var tree1 = $('<div class="tree_box"></div>')
+        // var tree2 = $('<h3>警察' + '(' + app.query('[userData/type=警察]').length + ')' + '</h3>')
+        // tree1.append(tree2)
+        // var tree3 = $('<ul class="tree_one"></ul>')
+        // app.query('[userData/type=警察]').forEach(function (obj) {
+        //     var tree4 = $('<li><h4 class="thing_name" onclick="clickPlane(this)" id="' + obj.id + '">' + obj.userData.username + '</h4></li>')
+        //     tree3.append(tree4)
+        // })
+        // tree1.append(tree3)
+        // $('#main_b').append(tree1)
+        // var tree1 = $('<div class="tree_box"></div>')
+        // var tree2 = $('<h3>犯人' + '(' + app.query('[userData/type=犯人]').length + ')' + '</h3>')
+        // tree1.append(tree2)
+        // var tree3 = $('<ul class="tree_one"></ul>')
+        // app.query('[userData/type=犯人]').forEach(function (obj) {
+        //     var tree4 = $('<li><h4 class="thing_name" onclick="clickPlane(this)" id="' + obj.id + '">' + obj.userData.username + '</h4></li>')
+        //     tree3.append(tree4)
+        // })
+        // tree1.append(tree3)
+        // $('#main_b').append(tree1)
+        // var tree1 = $('<div class="tree_box"></div>')
+        // var tree2 = $('<h3>外来人员' + '(' + app.query('[userData/type=外来人员]').length + ')' + '</h3>')
+        // tree1.append(tree2)
+        // var tree3 = $('<ul class="tree_one"></ul>')
+        // app.query('[userData/type=外来人员]').forEach(function (obj) {
+        //     var tree4 = $('<li><h4 class="thing_name" onclick="clickPlane(this)" id="' + obj.id + '">' + obj.userData.username + '</h4></li>')
+        //     tree3.append(tree4)
+        // })
+        // tree1.append(tree3)
+        // $('#main_b').append(tree1)
+        $('#personChoose').show()
+
+    })
+}
+
+function returnHome() {
+    //console.log('首页')
+    app.level.change(app.root.defaultCampus)
+    //console.log(t1, p1)
+    if (t1 && p1) {
+        // console.log(12121212)
+        app.camera.flyTo({
+            position: p1,
+            target: t1,
+            time: 2000
+        });
+        t1 = p1 = null
+    }
+
+}
+
+
+function addSBHTML() {
+    THING.Utils.dynamicLoad(['/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/g2.css'], function () {
+        var sbHTML = `<div class="navtion_bar" id="sbChoose">
+    <div class="title_two">
+       
+        <div class="title_d">设备分类</div>
+    </div>
+   
+    <div style="display: block;" class="tre" id="main_d">
+    </div>
+</div>`
+
+        $('body').append($(sbHTML))
+        $('#sbChoose').hide()
+    })
+}
+
+
+function postNameSeBe(type, that) {
+
+    var data = JSON.stringify([{ "type": type }])
+
+    $.ajax({
+        'url': urlAll + "/devicedatashow", //Ajax请求服务的地址
+        'type': "POST", //请求方式 "POST" 或 "GET"，默认为 "GET"
+        'dataType': "json",    //服务返回的数据类型，推荐使用标准JSON数据格式
+        //发送到服务器的数据
+        'contentType': "application/json; charset=utf-8",
+        'data': data,
+        //请求成功后的回调函数
+        'success': function (data) {
+            // console.log(data)
+            var dateName = $(that).next()
+            // var tree3 = $('<ul class="tre_one"></ul>')
+            // app.query(/SXT/).forEach(function (obj) {
+            //     var tree4 = $('<li><h4 class="thing_name" onclick="clickPlane(this)" id="' + obj.id + '">' + obj.name + '</h4></li>')
+            //     tree3.append(tree4)
+            // })
+            // tree1.append(tree3)
+            // $('#main_d').append(tree1)
+            $("domeLiSeBe").remove();
+            data.forEach((date, i) => {
+                var tree4 = $('<li class="domeLiSeBe"><h4 class="thing_name ploiceThingSe" onclick="clickPlane(this)" id="' + date.name + '">' + date.name + '</h4></li>')
+                $(dateName).append(tree4)
+            })
+            //$(".tree_one").css("display","none");
+            //console.log("1111")
+            dateName.toggle()
+            $(".ploiceThingSe").on("click", function () {
+                const type = $(this).attr("type");
+                const name = $(this).attr("id");
+                const date = JSON.stringify([{
+                    "ptype": type,
+                    "username": name
+                }])
+            })
+        },
+        //请求失败时调用的函数 有以下三个参数：XMLHttpRequest 对象、错误信息、（可选）捕获的异常对象
+        'error': function (xhr, status, error) {
+            console.log(xhr);
+        },
+    });
+
+}
+
+
+//实时设备
+
+function aiSiSEBE() {
+    $.ajax({
+        type: "get",
+        url: urlAll + "/devicenumquery",
+        dataType: "json",
+        jsonpCallback: "callback",
+        success: function (data) {
+            //console.log('围栏数据', data)
+            data.forEach((data, i) => {
+                var numPeople = "";
+                if (data.number instanceof Array) {
+                    numPeople = data.number[0].count
+                } else {
+                    numPeople = data.number
+                }
+                var classType = "." + data.type;
+                $(classType).text(numPeople)
+
+            })
+
+
+        },
+        error: function () {
+            console.log('error')
+        }
+    })
+}
+
+//获取设备
+function addSeBei() {
+    $.ajax({
+        type: "get",
+        url: urlAll + "/devicenumquery",
+        dataType: "json",
+        jsonpCallback: "callback",
+        success: function (data) {
+            //console.log('围栏数据', data)
+            var typeState = "其他";
+            data.forEach((data, i) => {
+                var typeNumber = parseInt(i + 1);
+                switch (data.type) {
+                    case "J":
+                        typeState = "基站"
+                        break;
+                    case "M":
+                        typeState = "门禁"
+                        break;
+                    case "C":
+                        typeState = "车禁"
+                        break;
+                    case "Z":
+                        typeState = "周界"
+                        break;
+                    case "S":
+                        typeState = "摄像头"
+                        break;
+                    case "Y":
+                        typeState = "一键报警"
+                        break;
+                    case "X":
+                        typeState = "胸牌"
+                        break;
+                    case "H":
+                        typeState = "手环"
+                        break;
+                    case "L":
+                        typeState = "车辆"
+                        break;
+                    case "CZ":
+                        typeState = "车载摄像头"
+                        break;
+
+                }
+                var tree1 = $('<div class="tre_box"></div>');
+                var numPeople = "";
+                if (data.number instanceof Array) {
+                    numPeople = data.number[0].count
+                } else {
+                    numPeople = data.number
+                }
+                var tree2 = $('<h3 type="' + typeNumber + '" class="seBenMode">' + typeState + '(<span class="' + data.type + '">' + numPeople + '</span>)' + '</h3>')
+                var tree3 = $('<ul class="tre_one"></ul>')
+                tree1.append(tree2)
+                tree1.append(tree3)
+                $('#main_d').append(tree1)
+            })
+
+            setInterval(function () {
+                aiSiSEBE()
+            }, 1000)
+            $(".seBenMode").on("click", function () {
+                const typeNum = $(this).attr("type");
+                postNameSeBe(typeNum, this);
+            })
+            // if (data) { create_Fences(data) }
+        },
+        error: function () {
+            console.log('error')
+        }
+    })
+}
+
+function louCengAll1() {
+    var className = "louYu";
+    $.ajax({
+        type: "get",
+        url: urlAll + "/query/buildingnumber",
+        dataType: "json",
+
+        success: function (data) {
+            //console.log(data+"2222222")
+            for (let j = 0; j < data.length; j++) {
+                var classLou = className + data[j].id;
+                console.log(classLou)
+                // var build = builds[j]
+                var b_number = 0
+                var tree1 = $('<div class="tree_box"></div>')
+                var tree3 = $('<ul class="tree_one"></ul>')
+                // var floors = build.query('.Floor').add(app.query(/People/).query('[parent/id=' + build.id + ']'))
+                var li1;
+                for (var i = 0, flors = data[j].room; i < flors.length; i++) {
+                    var flors
+                    var classFlor = className + flors[i].id;
+                    //  var li3 = $('<li></li>')
+                    //  var h5 = $('<h5 class="tree_name" id="' + room.id + '">' + treeName + '(' + r_number + ')' + '</h5>')
+                    //              li3.append(h5)
+                    //             li3.append(ul2)
+                    //             ul.append(li3)
+                    li1 = $('<li></li>')
+                    var treeName;
+                    var tree4 = $('<h5 class="tree_name" onclick="clickPlane(this)" id="' + flors[i].id + '">' + flors[i].name + '(<span class="' + classFlor + '">' + flors[i].number + '</span>)' + '</h5>')
+                    li1.append(tree4)
+                    // if (floors[i].userData.username) {
+                    //     treeName = floors[i].userData.username
+                    //     b_number++
+                    //     var tree4 = $('<h4 class="thing_name" onclick="clickPlane(this)" id="' + floors[i].id + '">' + treeName + '</h4>')
+                    //     li1.append(tree4)
+                    // } else {
+                    //     var num = i + 1;
+                    //     var fName = '第' + num + '层';
+                    //     var f_number = app.query(/People/).query('[parent/id=' + floors[i].id + ']').length
+                    //     var ul = $('<ul class="tree_two"></ul>')
+                    //     floors[i].query('.Room').add(app.query(/People/).query('[parent/id=' + floors[i].id + ']')).forEach(function (room) {
+
+                    //         if (room.userData.username) {
+                    //             treeName = room.userData.username
+                    //             b_number++
+                    //             var li3 =$('<li></li>')
+                    //             var h5 = $('<h5 class="thing_name" onclick="clickPlane(this)" id="' + room.id + '">' + treeName + '</h5>')
+                    //             li3.append(h5)
+                    //             ul.append(li3)
+                    //         } else {
+                    //             treeName = room.id
+                    //             var r_number = app.query(/People/).query('[parent/id=' + room.id + ']').length
+                    //             var ul2 = $('<ul class="tree_three"></ul>')
+                    //             app.query(/People/).query('[parent/id=' + room.id + ']').forEach(function (p) {
+                    //                 var li2 = $('<li id=1 class="thing_name" onclick="clickPlane(this)">Tom</li>')
+                    //                 ul2.append(li2)
+                    //                 f_number++
+                    //                 b_number++
+                    //             })
+                    //             var li3 = $('<li></li>')
+                    //             var h5 = $('<h5 class="tree_name" id="' + room.id + '">' + treeName + '(' + r_number + ')' + '</h5>')
+                    //             li3.append(h5)
+                    //             li3.append(ul2)
+                    //             ul.append(li3)
+                    //         }
+
+
+                    //     })
+
+                    //     var tree4 = $('<h4 class="tree_name" id="' + floors[i].id + '">' + fName + '(' + f_number + ')' + '</h4>')
+                    //     li1.append(tree4)
+                    // }
+
+
+
+                    //li1.append(ul)
+                    tree3.append(li1)
+                }
+                var tree2 = $('<h3 class="tree_name build_name" id="' + data[j].id + '">' + data[j].name + '(<span class="' + classLou + '">' + data[j].number + '</span>)' + '</h3>')
+                tree1.append(tree2)
+                tree1.append(tree3)
+                $('#main_c').append(tree1)
+
+            }
+            // $('.tree_name').click(function () {
+            //     var thingID = $(this).attr('id')
+
+            //     $('.tree_name').removeClass('choose_color')
+            //     $(this).addClass('choose_color')
+
+            //       $(this).next().toggle()
+            //     //  app.level.change(app.query('[id=' + thingID + ']')[0])
+            //     // if (app.query('[id=' + thingID + ']')[0] instanceof THING.Building) {
+            //     //     //console.log('进入建筑')
+            //     //     app.query('楼').visible = true
+            //     // }
+            // })
+
+            // $('#personChoose .build_name').click(function () {
+            //     //console.log(111222)
+            //     if (!t1 && !p1) {
+            //        // console.log(11221122)
+            //         t1 = app.camera.target
+            //         p1 = app.camera.position
+            //     }
+
+            // })
+
+
+        },
+        error: function () {
+            console.log('error')
+        }
+    })
+}
+
+
+var sbList = []
+function addSBData() {
+    sbList = app.query(/SXT/).add(app.query(/MJ/)).add(app.query(/CJ/)).add(app.query(/JZ/)).add(app.query(/YJ/))
+    THING.Utils.dynamicLoad(['/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/g2.js'], function () {
+        //var builds = app.query('楼')
+        // louCengAll1()
+        // for (let j = 0; j < builds.length; j++) {
+        //     var b_number = 0
+        //     var build = builds[j]
+        //     var tre1 = $('<div class="tre_box"></div>')
+        //     var tre3 = $('<ul class="tre_one"></ul>')
+        //     var floors = build.query('.Floor').add(sbList.query('[parent/id=' + build.id + ']'))
+        //     var li1;
+        //     for (var i = 0; i < floors.length; i++) {
+        //         li1 = $('<li></li>')
+        //         var ul = $('<ul class="tre_two"></ul>')
+        //         var treName;
+        //         if (floors[i] instanceof THING.Floor) {
+        //             var num = i + 1;
+        //             var f_number = sbList.query('[parent/id=' + floors[i].id + ']').length
+        //             var fName = '第' + num + '层'
+        //             floors[i].query('.Room').add(sbList.query('[parent/id=' + floors[i].id + ']')).forEach(function (room) {
+        //                 if (room instanceof THING.Room) {
+        //                     treName = room.id
+        //                     var r_number = sbList.query('[parent/id=' + room.id + ']').length
+        //                     var li3 = $('<li></li>')
+        //                     var h5 = $('<h5 class="tre_name" id="' + room.id + '">' + treName + '(' + r_number + ')' + '</h5>')
+        //                     li3.append(h5)
+        //                     var ul2 = $('<ul class="tre_three"></ul>')
+        //                     sbList.query('[parent/id=' + room.id + ']').forEach(function (p) {
+        //                         var li2 = $('<li id=1 class="thing_name" onclick="clickPlane(this)">' + p.name + '</li>')
+        //                         ul2.append(li2)
+        //                         f_number++
+        //                         b_number++
+        //                     })
+        //                     li3.append(ul2)
+        //                     ul.append(li3)
+        //                 } else {
+        //                     treName = room.name
+        //                     b_number++
+        //                     var li3 = $('<li></li>')
+        //                     var h5 = $('<h5 class="thing_name" onclick="clickPlane(this)" id="' + room.id + '">' + treName + '</h5>')
+        //                     li3.append(h5)
+        //                     ul.append(li3)
+
+        //                 }
+
+        //             })
+        //             // console.log('trename', treName)
+        //             var tre4 = $('<h4 class="tre_name" id="' + floors[i].id + '">' + fName + '(' + f_number + ')' + '</h4>')
+        //             li1.append(tre4)
+        //         } else {
+        //             treName = floors[i].name;
+        //             var tre4 = $('<h4 class="thing_name" onclick="clickPlane(this)" id="' + floors[i].id + '">' + treName + '</h4>')
+        //             li1.append(tre4)
+        //             b_number++
+        //         }
+
+
+
+
+        //         li1.append(ul)
+        //         tre3.append(li1)
+        //     }
+        //     var tre2 = $('<h3 class="tre_name build_name" id="' + build.id + '">' + build.id + '(' + b_number + ')' + '</h3>')
+        //     tre1.append(tre2)
+        //     tre1.append(tre3)
+        //     $('#main_c').append(tre1)
+
+        // }
+
+
+
+
+
+        // var a_number = sbList.query('[parent/id=0]').length
+        // var tree1 = $('<div class="tre_box"></div>')
+        // var tree2 = $('<h3>空地' + '(' + a_number + ')' + '</h3>')
+        // tree1.append(tree2)
+        // var tree3 = $('<ul class="tre_one"></ul>')
+        // sbList.query('[parent/id=0]').forEach(function (obj) {
+        //     var tree4 = $('<li><h4 class="thing_name" onclick="clickPlane(this)" id="' + obj.id + '">' + obj.name + '</h4></li>')
+        //     tree3.append(tree4)
+        // })
+        // tree1.append(tree3)
+        // $('#main_c').append(tree1)
+        var sxt_number = app.query(/SXT/).length
+
+
+        // var tree1 = $('<div class="tre_box"></div>')
+        // var tree2 = $('<h3>摄像头' + '(' + sxt_number + ')' + '</h3>')
+        // tree1.append(tree2)
+        // var tree3 = $('<ul class="tre_one"></ul>')
+        // app.query(/SXT/).forEach(function (obj) {
+        //     var tree4 = $('<li><h4 class="thing_name" onclick="clickPlane(this)" id="' + obj.id + '">' + obj.name + '</h4></li>')
+        //     tree3.append(tree4)
+        // })
+        // tree1.append(tree3)
+        // $('#main_d').append(tree1)
+        // var mj_number = app.query(/MJ/).length
+        // var tree1 = $('<div class="tre_box"></div>')
+        // var tree2 = $('<h3>门禁' + '(' + mj_number + ')' + '</h3>')
+        // tree1.append(tree2)
+        // var tree3 = $('<ul class="tre_one"></ul>')
+        // app.query(/MJ/).forEach(function (obj) {
+        //     var tree4 = $('<li><h4 class="thing_name" onclick="clickPlane(this)" id="' + obj.id + '">' + obj.name + '</h4></li>')
+        //     tree3.append(tree4)
+        // })
+        // tree1.append(tree3)
+        // $('#main_d').append(tree1)
+        // var tree1 = $('<div class="tre_box"></div>')
+        // var tree2 = $('<h3>车禁' + '(' + app.query(/CJ/).length + ')' + '</h3>')
+        // tree1.append(tree2)
+        // var tree3 = $('<ul class="tre_one"></ul>')
+        // app.query(/CJ/).forEach(function (obj) {
+        //     var tree4 = $('<li><h4 class="thing_name" onclick="clickPlane(this)" id="' + obj.id + '">' + obj.name + '</h4></li>')
+        //     tree3.append(tree4)
+        // })
+        // tree1.append(tree3)
+        // $('#main_d').append(tree1)
+        // var tree1 = $('<div class="tre_box"></div>')
+        // var tree2 = $('<h3>基站' + '(' + app.query(/JZ/).length + ')' + '</h3>')
+        // tree1.append(tree2)
+        // var tree3 = $('<ul class="tre_one"></ul>')
+        // app.query(/JZ/).forEach(function (obj) {
+        //     var tree4 = $('<li><h4 class="thing_name" onclick="clickPlane(this)" id="' + obj.id + '">' + obj.name + '</h4></li>')
+        //     tree3.append(tree4)
+        // })
+        // tree1.append(tree3)
+        // $('#main_d').append(tree1)
+        // var tree1 = $('<div class="tre_box"></div>')
+        // var tree2 = $('<h3>一键报警' + '(' + app.query(/YJ/).length + ')' + '</h3>')
+        // tree1.append(tree2)
+        // var tree3 = $('<ul class="tre_one"></ul>')
+        // app.query(/YJ/).forEach(function (obj) {
+        //     var tree4 = $('<li><h4 class="thing_name" onclick="clickPlane(this)" id="' + obj.id + '">' + obj.name + '</h4></li>')
+        //     tree3.append(tree4)
+        // })
+        // tree1.append(tree3)
+        // $('#main_d').append(tree1)
+        addSeBei()
+        $('#sbChoose .build_name').click(function () {
+            //console.log(111222)
+            if (!t1 && !p1) {
+                //console.log(11221122)
+                t1 = app.camera.target
+                p1 = app.camera.position
+            }
+
+        })
+        $('.tre_name').click(function () {
+            $('.tre_name').removeClass('choose_color')
+            $(this).addClass('choose_color')
+            $(this).next().toggle()
+            var thingID = $(this).attr('id')
+            app.level.change(app.query('[id=' + thingID + ']')[0])
+
+
+        })
+        // app.camera.fit(gold_thing)
+        // console.log('长度', $('.thing_name').length)
+
+    })
+}
+
+
+
+
+//gaoJing
+
+// addGAOPLOICE()
+// function addGAOPLOICE() {
+//     THING.Utils.dynamicLoad(['/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/g2.css'], function () {
+//         var addHTL =
+//         `<div class="navtion_bar divNative" id="addPloice12">
+//             <div class="title_two">
+//                 <div class="title_e active" onclick="returnHome()">区域</div>
+//                 <div class="title_f">告警</div>
+//             </div>
+//            
+//           <div style="display: block;" class="tre" id="main_f">
+//           </div>
+//     </div>`
+
+//         $('body').append($(addHTL))
+//         $('#addPloice12').hide()
+//     })
+// }
+
+
+
+// 利用模板字符串 创建页面元素
+function create_html() {
+    var addHTL = `<div class="navigation_bar navtiontion_car" id="addPloice12">
+    <div class="title_two">
+       
+        <div class="titleAll title_f">告警</div>
+        </div>
+       
+        <div style="display: block;" class="tre" id="main_f">
+        </div>
+   </div>`
+
+    $('body').append($(addHTL))
+
+
+    $('#addPloice12').hide()
+
+    $(".title_e").click(function () {
+        $(".titleAll").removeClass("active");
+        $(this).addClass("active")
+        $("#main_e").css("display", "block")
+        $("#main_f").css("display", "none")
+    })
+    $(".title_f").click(function () {
+        $(".titleAll").removeClass("active");
+        $(this).addClass("active")
+        $("#main_e").css("display", "none")
+        $("#main_f").css("display", "block")
+    })
+}
+
+
+
+function seBeiAll() {
+    $.ajax({
+        type: "get",
+        url: urlAll + "/realtimedeviceinfoquery",
+        dataType: "json",
+        // contentType: 'application/json',
+        // jsonpCallback: "callback",
+        //data: JSON.stringify(data),
+        success: function (d) {
+            if (d) {
+                $('#main_f').remove()
+                d.forEach((data, i) => {
+                    var tree1 = $('<div class="tree_box"></div>')
+                    var tree2 = $('<h3 class="seBeName" type="' + data.device_id + '"> ' + data.device_id + '</h3>')
+                    tree1.append(tree2)
+                    $('#main_f').append(tree1)
+                })
+
+
+            }
+        },
+        error: function (d) {
+            console.log('error')
+
+        }
+    });
+}
+
+function louCengAll2() {
+    var className = "louYu";
+    $.ajax({
+        type: "get",
+        url: urlAll + "/query/buildingnumber",
+        dataType: "json",
+
+        success: function (data) {
+            //console.log(data+"2222222")
+            for (let j = 0; j < data.length; j++) {
+                var classLou = className + data[j].id;
+                console.log(classLou)
+                // var build = builds[j]
+                var b_number = 0
+                var tree1 = $('<div class="tree_box"></div>')
+                var tree3 = $('<ul class="tree_one"></ul>')
+                // var floors = build.query('.Floor').add(app.query(/People/).query('[parent/id=' + build.id + ']'))
+                var li1;
+                for (var i = 0, flors = data[j].room; i < flors.length; i++) {
+                    var flors
+                    var classFlor = className + flors[i].id;
+                    //  var li3 = $('<li></li>')
+                    //  var h5 = $('<h5 class="tree_name" id="' + room.id + '">' + treeName + '(' + r_number + ')' + '</h5>')
+                    //              li3.append(h5)
+                    //             li3.append(ul2)
+                    //             ul.append(li3)
+                    li1 = $('<li></li>')
+                    var treeName;
+                    var tree4 = $('<h5 class="tree_name" onclick="clickPlane(this)" id="' + flors[i].id + '">' + flors[i].name + '(<span class="' + classFlor + '">' + flors[i].number + '</span>)' + '</h5>')
+                    li1.append(tree4)
+                    // if (floors[i].userData.username) {
+                    //     treeName = floors[i].userData.username
+                    //     b_number++
+                    //     var tree4 = $('<h4 class="thing_name" onclick="clickPlane(this)" id="' + floors[i].id + '">' + treeName + '</h4>')
+                    //     li1.append(tree4)
+                    // } else {
+                    //     var num = i + 1;
+                    //     var fName = '第' + num + '层';
+                    //     var f_number = app.query(/People/).query('[parent/id=' + floors[i].id + ']').length
+                    //     var ul = $('<ul class="tree_two"></ul>')
+                    //     floors[i].query('.Room').add(app.query(/People/).query('[parent/id=' + floors[i].id + ']')).forEach(function (room) {
+
+                    //         if (room.userData.username) {
+                    //             treeName = room.userData.username
+                    //             b_number++
+                    //             var li3 =$('<li></li>')
+                    //             var h5 = $('<h5 class="thing_name" onclick="clickPlane(this)" id="' + room.id + '">' + treeName + '</h5>')
+                    //             li3.append(h5)
+                    //             ul.append(li3)
+                    //         } else {
+                    //             treeName = room.id
+                    //             var r_number = app.query(/People/).query('[parent/id=' + room.id + ']').length
+                    //             var ul2 = $('<ul class="tree_three"></ul>')
+                    //             app.query(/People/).query('[parent/id=' + room.id + ']').forEach(function (p) {
+                    //                 var li2 = $('<li id=1 class="thing_name" onclick="clickPlane(this)">Tom</li>')
+                    //                 ul2.append(li2)
+                    //                 f_number++
+                    //                 b_number++
+                    //             })
+                    //             var li3 = $('<li></li>')
+                    //             var h5 = $('<h5 class="tree_name" id="' + room.id + '">' + treeName + '(' + r_number + ')' + '</h5>')
+                    //             li3.append(h5)
+                    //             li3.append(ul2)
+                    //             ul.append(li3)
+                    //         }
+
+
+                    //     })
+
+                    //     var tree4 = $('<h4 class="tree_name" id="' + floors[i].id + '">' + fName + '(' + f_number + ')' + '</h4>')
+                    //     li1.append(tree4)
+                    // }
+
+
+
+                    //li1.append(ul)
+                    tree3.append(li1)
+                }
+                var tree2 = $('<h3 class="tree_name build_name" id="' + data[j].id + '">' + data[j].name + '(<span class="' + classLou + '">' + data[j].number + '</span>)' + '</h3>')
+                tree1.append(tree2)
+                tree1.append(tree3)
+                $('#main_e').append(tree1)
+
+            }
+            // $('.tree_name').click(function () {
+            //     var thingID = $(this).attr('id')
+
+            //     $('.tree_name').removeClass('choose_color')
+            //     $(this).addClass('choose_color')
+
+            //       $(this).next().toggle()
+            //     //  app.level.change(app.query('[id=' + thingID + ']')[0])
+            //     // if (app.query('[id=' + thingID + ']')[0] instanceof THING.Building) {
+            //     //     //console.log('进入建筑')
+            //     //     app.query('楼').visible = true
+            //     // }
+            // })
+
+            // $('#personChoose .build_name').click(function () {
+            //     //console.log(111222)
+            //     if (!t1 && !p1) {
+            //        // console.log(11221122)
+            //         t1 = app.camera.target
+            //         p1 = app.camera.position
+            //     }
+
+            // })
+
+
+        },
+        error: function () {
+            console.log('error')
+        }
+    })
+}
+
+function addPloice() {
+
+
+    var builds = app.query('楼')
+    // for (let j = 0; j < builds.length; j++) {
+    //     var build = builds[j]
+    //     var b_number = 0
+    //     var tree1 = $('<div class="tree_box"></div>')
+    //     var tree3 = $('<ul class="tree_one"></ul>')
+    //     var floors = build.query('.Floor').add(app.query(/People/).query('[parent/id=' + build.id + ']'))
+    //     var li1;
+    //     for (var i = 0; i < floors.length; i++) {
+    //         li1 = $('<li></li>')
+    //         var treeName;
+    //         if (floors[i].userData.username) {
+    //             treeName = floors[i].userData.username
+    //             b_number++
+    //             var tree4 = $('<h4 class="thing_name" onclick="clickPlane(this)" id="' + floors[i].id + '">' + treeName + '</h4>')
+    //             li1.append(tree4)
+    //         } else {
+    //             var num = i + 1;
+    //             var fName = '第' + num + '层';
+    //             var f_number = app.query(/People/).query('[parent/id=' + floors[i].id + ']').length
+    //             var ul = $('<ul class="tree_two"></ul>')
+    //             floors[i].query('.Room').add(app.query(/People/).query('[parent/id=' + floors[i].id + ']')).forEach(function (room) {
+
+    //                 if (room.userData.username) {
+    //                     treeName = room.userData.username
+    //                     b_number++
+    //                     var li3 = $('<li></li>')
+    //                     var h5 = $('<h5 class="thing_name" onclick="clickPlane(this)" id="' + room.id + '">' + treeName + '</h5>')
+    //                     li3.append(h5)
+    //                     ul.append(li3)
+    //                 } else {
+    //                     treeName = room.id
+    //                     var r_number = app.query(/People/).query('[parent/id=' + room.id + ']').length
+    //                     var ul2 = $('<ul class="tree_three"></ul>')
+    //                     app.query(/People/).query('[parent/id=' + room.id + ']').forEach(function (p) {
+    //                         var li2 = $('<li id=1 class="thing_name" onclick="clickPlane(this)">Tom</li>')
+    //                         ul2.append(li2)
+    //                         f_number++
+    //                         b_number++
+    //                     })
+    //                     var li3 = $('<li></li>')
+    //                     var h5 = $('<h5 class="tree_name" id="' + room.id + '">' + treeName + '(' + r_number + ')' + '</h5>')
+    //                     li3.append(h5)
+    //                     li3.append(ul2)
+    //                     ul.append(li3)
+    //                 }
+
+
+    //             })
+
+    //             var tree4 = $('<h4 class="tree_name" id="' + floors[i].id + '">' + fName + '(' + f_number + ')' + '</h4>')
+    //             li1.append(tree4)
+    //         }
+
+
+
+    //         li1.append(ul)
+    //         tree3.append(li1)
+    //     }
+    //     var tree2 = $('<h3 class="tree_name build_name" id="' + build.id + '">' + build.id + '(' + b_number + ')' + '</h3>')
+    //     tree1.append(tree2)
+    //     tree1.append(tree3)
+    //     $('#main_e').append(tree1)
+
+    // }
+    // var tree1 = $('<div class="tree_box"></div>')
+    // var tree2 = $('<h3>空地' + '(' + app.query(/People/).query('[parent/id=0]').length + ')' + '</h3>')
+    // tree1.append(tree2)
+    // var tree3 = $('<ul class="tree_one"></ul>')
+    // app.query(/People/).query('[parent/id=0]').forEach(function (obj) {
+    //     var tree4 = $('<li><h4 class="thing_name" onclick="clickPlane(this)" id="' + obj.id + '">' + obj.userData.username + '</h4></li>')
+    //     tree3.append(tree4)
+    // })
+    // tree1.append(tree3)
+    // $('#main_e').append(tree1)
+    seBeiAll()
+    setInterval(function () {
+        seBeiAll()
+    }, 300000)
+
+    $('.tree_name').click(function () {
+        var thingID = $(this).attr('id')
+        app.level.change(app.query('[id=' + thingID + ']')[0])
+        $('.tree_name').removeClass('choose_color')
+        $(this).addClass('choose_color')
+        if (app.query('[id=' + thingID + ']')[0] instanceof THING.Building) {
+            //console.log('进入建筑')
+            app.query('楼').visible = true
+        }
+    })
+
+    $('#addPloice12 .build_name').click(function () {
+        //console.log(111222)
+        if (!t1 && !p1) {
+            //console.log(11221122)
+            t1 = app.camera.target
+            p1 = app.camera.position
+        }
+
+    })
+}
+
+
+
+
+// 利用模板字符串 创建页面元素
+function create_html1() {
+    var addHTL = `<div style="display: none;" class="navigation_bar navtiontion_car" id="addPloice13">
+    <div class="title_two">
+        
+        <div class="titleAll1 title_f1">电子围栏</div>
+        </div>
+        <div style="display: block;" class="tre" id="main_e1">
+        </div>
+      
+   </div>`
+
+    $('body').append($(addHTL))
+    $('#addPloice13').hide()
+
+    $(".title_e1").click(function () {
+        $(".titleAll1").removeClass("active");
+        $(this).addClass("active")
+        $("#main_e1").css("display", "block")
+        $("#main_f1").css("display", "none")
+    })
+    $(".title_f1").click(function () {
+        $(".titleAll1").removeClass("active");
+        $(this).addClass("active")
+        $("#main_e1").css("display", "none")
+        $("#main_f1").css("display", "block")
+    })
+}
+
+function dianZiWeiLan() {
+    $.ajax({
+        type: "get",
+        url: urlAll + "/fence_data/list",
+        dataType: "json",
+
+        success: function (data) {
+            $("#main_e1").html("")
+            for (let j = 0; j < data.length; j++) {
+
+                var tree1 = $('<div class="tree_box"></div>')
+                var tree3 = $('<ul class="tree_one"></ul>')
+
+                var tree2 = $('<h3 class="tree_name build_name" x="' + data[j].termination_coordinates_x + '"  y="' + data[j].termination_coordinates_y + '"  z="' + data[j].termination_coordinates_z + '">' + data[j].name + '</h3>')
+                tree1.append(tree2)
+                tree1.append(tree3)
+                $('#main_e1').append(tree1)
+
+            }
+
+        }
+
+
+    })
+}
+
+
+
+
+function addPloice1() {
+
+    var builds = app.query('楼')
+    setInterval(function () {
+        dianZiWeiLan()
+    }, 10000)
+    // for (let j = 0; j < builds.length; j++) {
+
+    //     var tree1 = $('<div class="tree_box"></div>')
+    //     var tree3 = $('<ul class="tree_one"></ul>')
+
+    //     var tree2 = $('<h3 class="tree_name build_name" id="' + build.id + '">' + build.id + '(' + b_number + ')' + '</h3>')
+    //     tree1.append(tree2)
+    //     tree1.append(tree3)
+    //     $('#main_e1').append(tree1)
+
+    // }
+
+
+
+}
+
+
+
+
+
+
+
+var idPloice = null;
+function gold_thing_showUI(object) {
+    if (gold_thing) gold_thing.obj.style.outlineColor = null
+    if (gold_thing && gold_thing.ui) {
+        gold_thing.ui.destroy()
+        gold_thing = null
+    }
+    var pos = object.selfToWorld([1.5, object.size[1], 1.5]);
+    if (object.name.substring(0, 1) === 'Y') {
+        // console.log('改变')
+        pos = object.selfToWorld([0.3, 0, 0.3])
+    } else if (object.name.substring(0, 1) === 'P') {
+        // console.log('改变')
+        pos = object.selfToWorld([3, object.size[1] * 3, 3])
+    };
+    app.on(THING.EventType.LevelFlyEnd, '*', function (ev) {
+        app.camera.flyTo({
+            position: pos,
+            target: [object.position[0], object.position[1] + object.size[1], object.position[2]],
+            // radius: 2, 
+            time: 1000,
+            complete: function () {
+                object.style.outlineColor = '#DC143C'
+                //console.log(object.name.substring(0, 1))
+                if (object.name.substring(0, 1) === 'P') {
+                    gold_thing = new Person(object)
+                    gold_thing.showPanel()
+                    //console.log('人员')
+                } else if (object.name.substring(0, 1) === 'M') {
+                    gold_thing = new MJ(object)
+                    gold_thing.showPanel()
+                } else if (object.name.substring(0, 1) === 'C') {
+                    gold_thing = new CJ(object)
+                    gold_thing.showPanel()
+                } else if (object.name.substring(0, 1) === 'Y') {
+                    gold_thing = new YJ(object)
+                    gold_thing.showPanel()
+                } else if (object.name.substring(0, 1) === 'J') {
+                    gold_thing = new JZ(object)
+                    gold_thing.showPanel()
+                } else if (object.name.substring(0, 1) === 'S') {
+                    gold_thing = new VideoCamera(object)
+                    gold_thing.showPanel()
+                }
+            }
+
+        })
+        app.off(THING.EventType.LevelFlyEnd, '*');
+
+    });
+    app.level.change(object.parent)
+}
+function clickPlane(obj) {
+    $('.tre_name').removeClass('choose_color')
+    $('.tree_name').removeClass('choose_color')
+    $('.thing_name').removeClass('choose_color')
+    $(obj).addClass('choose_color')
+    // var object = app.query('[id=' + $(obj).attr('id') + ']')[0]
+    // //gold_thing_showUI(object)
+    const type = $(obj).attr("type");
+    const name = $(obj).attr("id");
+    const date = JSON.stringify([{
+        "ptype": type,
+        "username": name
+    }])
+    postPloice(date)
+}
+
+function showColor(id) {
+
+    $('.tre_name').removeClass('choose_color')
+    $('.tree_name').removeClass('choose_color')
+    $('.thing_name').removeClass('choose_color')
+    $('#' + id).addClass('choose_color')
+}
+
+
+var gold_thing = null
+
+function addStaHTML() {
+    THING.Utils.dynamicLoad(['/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/h.css'], function () {
+        var hHTML = `<div id="statistic" style='height: 303px;'>
+        <div class="main_data border">
+            <div class="data_num" id="peoNum">
+                `+ app.query(/People/).length + `
+            </div>
+            <div class="data_title">
+                人员
+            </div>
+        </div>
+        <div class="main_data border">
+            <div class="data_num" id="sbNum">
+                `+ sbList.length + `
+            </div>
+            <div class="data_title">
+                设备
+            </div>
+        </div>
+            <div class="main_data">
+            <div class="data_num" id="btnopen" style='font-size: 20px;'>
+                信息
+            </div>
+            <div class="data_title">
+            </div>
+        </div>
+    </div>`
+        $('#div3d').append($(hHTML))
+        $('#btnopen').click(function () {
+            var win = window.open("http://47.103.34.10:8080/search/entrance_quard/Mcs001", "123213123", "width=1200px,height=600px,top=100,left=200,menubar=yes,location=yes,scrollbars=yes")//表示不会一直新建窗体，一直都是在名字为abccc的窗体打开（第一次是新建了一个abccc的窗体，之后就不会再创建）
+            win.moveTo(200, 200);
+        })
+        //  层级变化
+        app.on(THING.EventType.LevelChange, function (ev) {
+            if (gold_thing) {
+                gold_thing.ui.destroy()
+                gold_thing = null
+                gold_thing.obj.style.outlineColor = null;
+            }
+            app.query('.Building').visible = true
+            var object = ev.current;
+            if (object instanceof THING.Campus) {
+                // console.log('Campus: ' + object);
+                $('#peoNum').html(app.query(/People/).length)
+                $('#sbNum').html(sbList.length)
+
+            }
+            else if (object instanceof THING.Building) {
+                //console.log('Building: ' + object);
+                var peoNum = 0, sbNum = 0;
+                object.query('.Floor').forEach(function (floor) {
+                    peoNum = peoNum + app.query(/People/).query('[parent/id=' + floor.id + ']').length
+                    sbNum = sbNum + sbList.query('[parent/id=' + floor.id + ']').length
+                })
+                $('#peoNum').html(peoNum)
+                $('#sbNum').html(sbNum)
+                app.query('楼').visible = true
+
+            }
+            else if (object instanceof THING.Floor) {
+                // console.log('Floor: ' + object);
+                $('#peoNum').html(app.query(/People/).query('[parent/id=' + object.id + ']').length)
+                $('#sbNum').html(sbList.query('[parent/id=' + object.id + ']').length)
+            }
+            else if (object instanceof THING.Thing) {
+                //console.log('Thing: ' + object);
+            }
+        });
+    })
+}
+var numBge = numBge11 = numBge12 = false;
+
+function addSearchHTML() {
+    THING.Utils.dynamicLoad(['/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/e.css',
+        '/uploads/wechat/emhhbmdDaGVuZw==/file/demo2000/paging.css',
+        '/uploads/wechat/emhhbmdDaGVuZw==/file/demo2000/paging.js',
+        '/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/close1.js',
+        '/uploads/wechat/bWVzb255Y2hpZA==/file/demo0614/w.css'
+    ], function () {
+        var eHTML = `<div style="width:600px" class="searchThing" id="sbSearh">
+        <div class="Search SB_title">
+            <span>按编号搜索</span>
+            <input type="text" id="sbName">
+            <span><button class="SB_btn" id="sbBtn">搜索</button></span>
+            <span class="close_btn">X</span>
+        </div>
+        <div class="SB_main">
+            <ul class="info_title">
+                <li style="width:25%">编号</li>
+                <li style="width:25%">类别</li>
+                <li style="width:25%">状态</li>
+                <li style="width:25%">操作</li>
+            </ul>
+            <ul style="height: 300px" class="SB_info" id="sbInfo">
+                </ul>
+                <div class="pagger-box pagger" id="box1"></div>
+        </div>
+    </div>`
+        $('body').append($(eHTML))
+        $('#sbBtn').click(function () {
+            var name = $('#sbName').val()
+            var date = JSON.stringify([{ "name": name }])
+            $.ajax({
+                'url': urlAll + "/realtimedevicequery?page=0", //Ajax请求服务的地址
+                'type': "POST", //请求方式 "POST" 或 "GET"，默认为 "GET"
+                'dataType': "json",    //服务返回的数据类型，推荐使用标准JSON数据格式
+                //发送到服务器的数据
+                'contentType': "application/json; charset=utf-8",
+                'data': date,
+                //请求成功后的回调函数
+                'success': function (data) {
+                    //console.log(data)
+                    //$("#box1").css("display","none")
+                    addSInfo(data)
+                    var totalYe = Math.ceil(data[0].number / 10)
+                    $('#box1').paging({
+                        initPageNo: 1, // 初始页码
+                        totalPages: totalYe, //总页数
+                        // totalCount: '合计' + setTotalCount + '条数据', // 条目总数
+                        slideSpeed: 600, // 缓动速度。单位毫秒
+                        jump: true, //是否支持跳转
+                        callback: function (page) { // 回调函数
+                            // console.log(page);
+                            if (numBge11) {
+                                var page = parseInt(page - 1)
+                                seBeiSoushu(date, page)
+                            } else {
+                                numBge11 = true
+                            }
+
+
+                        }
+                    })
+                    // //seBeiSoushu
+                    // 处理返回的数据
+                },
+                //请求失败时调用的函数 有以下三个参数：XMLHttpRequest 对象、错误信息、（可选）捕获的异常对象
+                'error': function (xhr, status, error) {
+                    console.log(xhr);
+                },
+            });
+
+            //addSInfo(sbList.query(eval('/' + $('#sbName').val() + '/')))
+        })
+        $('#sbSearh').hide()
+        var eHTML2 = `<div style="width:600px" class="searchThing" id="perSearch">
+        <div class="Search SB_title">
+            <span>按姓名搜索</span>
+            <input type="text" id="perName">
+            <span><button class="SB_btn" id="psBtn">搜索</button></span>
+            <span class="close_btn">X</span>
+        </div>
+        <div style="bottom: 100px;" class="SB_main">
+            <ul class="info_title">
+                <li style="width:25%">编号</li>
+                <li style="width:25%">姓名</li>
+                <li style="width:25%">类别</li>
+                <li style="width:25%">操作</li>
+            </ul>
+            <ul style="height: 300px" class="SB_info" id="perInfo">
+                </ul>
+                 <div class="pagger-box pagger" id="box"></div>
+        </div>
+        
+    </div>`
+        $('body').append($(eHTML2))
+
+
+        $('#psBtn').click(function () {
+            var name = $('#perName').val()
+            var date = JSON.stringify([{ "name": name }])
+            $.ajax({
+                'url': urlAll + "/realtimeinfoquery?page=0", //Ajax请求服务的地址
+                'type': "POST", //请求方式 "POST" 或 "GET"，默认为 "GET"
+                'dataType': "json",    //服务返回的数据类型，推荐使用标准JSON数据格式
+                //发送到服务器的数据
+                'contentType': "application/json; charset=utf-8",
+                'data': date,
+                //请求成功后的回调函数
+                'success': function (data) {
+                    // console.log(data)
+                    addPInfoSo(data)
+                    if (data.length == 0) {
+
+                    } else {
+                        var totalYe = Math.ceil(data[0].number / 10)
+                        $('#box').paging({
+                            initPageNo: 1, // 初始页码
+                            totalPages: totalYe, //总页数
+                            // totalCount: '合计' + setTotalCount + '条数据', // 条目总数
+                            slideSpeed: 600, // 缓动速度。单位毫秒
+                            jump: true, //是否支持跳转
+                            callback: function (page) { // 回调函数
+                                // console.log(page);
+                                if (numBge) {
+                                    var page = parseInt(page - 1)
+                                    peopleSoushu(date, page)
+                                } else {
+                                    numBge = true
+                                }
+
+                            }
+                        })
+                    }
+                    //seBeiSoushu
+                    //$("#box").css("display","none")
+                    // 处理返回的数据
+                },
+                //请求失败时调用的函数 有以下三个参数：XMLHttpRequest 对象、错误信息、（可选）捕获的异常对象
+                'error': function (xhr, status, error) {
+                    console.log(xhr);
+                },
+            });
+
+
+
+
+            //ajaxGetDate()
+            //addPInfo(app.query(/People/).query(eval('/' + name + '/')))
+        })
+        $('#perSearch').hide()
+
+
+
+
+
+
+
+        //告警
+
+        var eHTML3 = `<div style="width:600px" class="searchThing" id="perSearch1">
+        <div class="Search SB_title">
+            <span>按编号搜索</span>
+            <input type="text" id="perName1">
+            <span><button class="SB_btn" id="psBtn1">搜索</button></span>
+            <span class="close_btn">X</span>
+        </div>
+        <div style="bottom: 100px;" class="SB_main">
+            <ul class="info_title">
+                <li style="width:20%">编号</li>
+                <li style="width:15%">告警坐标</li>
+                <li style="width:40%">告警时间</li>
+                <li style="width:25%">操作</li>
+            </ul>
+            <ul style="height: 300px" class="SB_info" id="perInfo1">
+                </ul>
+                 <div class="pagger-box pagger" id="box3"></div>
+        </div>
+     </div>`
+        $('body').append($(eHTML3))
+
+
+        $('#psBtn1').click(function () {
+            var name = $('#perName1').val()
+            var date = JSON.stringify([{ "name": name }])
+            $.ajax({
+                'url': urlAll + "/realtimedeviceinfoquery?page=0", //Ajax请求服务的地址
+                'type': "POST", //请求方式 "POST" 或 "GET"，默认为 "GET"
+                'dataType': "json",    //服务返回的数据类型，推荐使用标准JSON数据格式
+                //发送到服务器的数据
+                'contentType': "application/json; charset=utf-8",
+                'data': date,
+                //请求成功后的回调函数
+                'success': function (data) {
+                    //console.log(data)
+                    addPInfo1(data)
+                    var totalYe = Math.ceil(data[0].number / 10)
+
+                    $('#box3').paging({
+                        initPageNo: 1, // 初始页码
+                        totalPages: totalYe, //总页数
+                        // totalCount: '合计' + setTotalCount + '条数据', // 条目总数
+                        slideSpeed: 600, // 缓动速度。单位毫秒
+                        jump: true, //是否支持跳转
+                        callback: function (page) { // 回调函数
+                            // console.log(page);
+
+                            if (numBge12) {
+                                var page = parseInt(page - 1)
+                                souShu(date, page)
+                            } else {
+                                numBge12 = true
+                            }
+                        }
+                    })
+                },
+                //请求失败时调用的函数 有以下三个参数：XMLHttpRequest 对象、错误信息、（可选）捕获的异常对象
+                'error': function (xhr, status, error) {
+                    console.log(xhr);
+                }
+            });
+        })
+        var eHTML4 = `<div style="width:600px" class="searchThing" id="perSearch2">
+        <div class="Search SB_title">
+            <span>按编号搜索</span>
+            <input type="text" id="perName2">
+            <span><button class="SB_btn" id="psBtn2">搜索</button></span>
+            <span class="close_btn">X</span>
+        </div>
+        <div style="bottom: 100px;" class="SB_main">
+            <ul class="info_title">
+            
+                <li style="width:25%">告警坐标</li>
+                <li style="width:40%">开始时间</li>
+                <li style="width:35%">结束时间</li>
+            </ul>
+            <ul style="height: 300px" class="SB_info" id="perInfo2">
+                </ul>
+                 <div class="pagger-box pagger" id="box4"></div>
+        </div>
+     </div>`
+        $('body').append($(eHTML4))
+        $('#perSearch2').hide()
+        $("#psBtn2").on("click", function () {
+        })
+
+        $('.close_btn').click(function () {
+            console.log('关闭')
+            $(this).parent().parent().hide()
+        })
+    })
+
+}
+
+
+
+function peopleSoushu(date, page) {
+    $.ajax({
+        'url': urlAll + "/realtimeinfoquery?page=" + page, //Ajax请求服务的地址
+        'type': "POST", //请求方式 "POST" 或 "GET"，默认为 "GET"
+        'dataType': "json",    //服务返回的数据类型，推荐使用标准JSON数据格式
+        //发送到服务器的数据
+        'contentType': "application/json; charset=utf-8",
+        'data': date,
+        //请求成功后的回调函数
+        'success': function (data) {
+            // console.log(data)
+            addPInfoSo(data)
+            //seBeiSoushu
+            //$("#box").css("display","none")
+            // 处理返回的数据
+        },
+        //请求失败时调用的函数 有以下三个参数：XMLHttpRequest 对象、错误信息、（可选）捕获的异常对象
+        'error': function (xhr, status, error) {
+            console.log(xhr);
+        },
+    });
+}
+
+
+function seBeiSoushu(date, number) {
+    $.ajax({
+        'url': urlAll + "/realtimedevicequery?page=" + number, //Ajax请求服务的地址
+        'type': "POST", //请求方式 "POST" 或 "GET"，默认为 "GET"
+        'dataType': "json",    //服务返回的数据类型，推荐使用标准JSON数据格式
+        //发送到服务器的数据
+        'contentType': "application/json; charset=utf-8",
+        'data': date,
+        //请求成功后的回调函数
+        'success': function (data) {
+            //console.log(data)
+            //$("#box1").css("display","none")
+            addSInfo(data)
+            // 处理返回的数据
+        },
+        //请求失败时调用的函数 有以下三个参数：XMLHttpRequest 对象、错误信息、（可选）捕获的异常对象
+        'error': function (xhr, status, error) {
+            console.log(xhr);
+        },
+    });
+}
+
+
+function souShu(date, number) {
+    $.ajax({
+        'url': url + "/realtimedeviceinfoquery?page=" + number, //Ajax请求服务的地址
+        'type': "POST", //请求方式 "POST" 或 "GET"，默认为 "GET"
+        'dataType': "json",    //服务返回的数据类型，推荐使用标准JSON数据格式
+        //发送到服务器的数据
+        'contentType': "application/json; charset=utf-8",
+        'data': date,
+        //请求成功后的回调函数
+        'success': function (data) {
+            // console.log(data)
+            addPInfo1(data)
+
+
+
+
+
+            //$("#box").css("display","none")
+            // 处理返回的数据
+        },
+        //请求失败时调用的函数 有以下三个参数：XMLHttpRequest 对象、错误信息、（可选）捕获的异常对象
+        'error': function (xhr, status, error) {
+            console.log(xhr);
+        },
+    });
+}
+
+
+
+var numBage2 = false
+function addPostSou(number) {
+    // console.log(number+"oopooii")
+
+    $.ajax({
+        type: "get",
+        url: urlAll + "/realtimeperson?page=" + number,
+        dataType: "json",
+        jsonpCallback: "callback",
+        success: function (data) {
+            console.log('请求ok')
+            // console.log('拉取数据', data)
+            // var obj = data[0];
+            addPInfo(data)
+            var setTotalCount = 1000;
+            var totalYe = Math.ceil(data[0].number / 10)
+            console.log(totalYe + "22233311")
+
+            $('#box').paging({
+                initPageNo: 1, // 初始页码
+                totalPages: totalYe, //总页数
+                // totalCount: '合计' + setTotalCount + '条数据', // 条目总数
+                slideSpeed: 600, // 缓动速度。单位毫秒
+                //jump: true, //是否支持跳转
+                callback: function (page) { // 回调函数
+
+                    if (numBage2) {
+                        var page = parseInt(page - 1)
+                        addPostSou(date, page)
+                    } else {
+                        numBage2 = true
+                    }
+                }
+            })
+
+        },
+        error: function () {
+            console.log('error')
+        }
+    })
+}
+
+var numBage3 = false;
+function addPostSou1(number) {
+    if (number == -1) {
+        number = 0
+    }
+
+    $.ajax({
+        type: "get",
+        url: urlAll + "/realtimedevicenum?page=" + number,
+        dataType: "json",
+        jsonpCallback: "callback",
+        success: function (data) {
+            // console.log('拉取数据', data)
+            // var obj = data[0];
+            addSInfo(data)
+            var setTotalCount = 1000;
+            var totalYe = Math.ceil(data[0].number / 10)
+            ///console.log(totalYe+"22233311")
+            $('#box1').paging({
+                initPageNo: 1, // 初始页码
+                totalPages: totalYe, //总页数
+                // totalCount: '合计' + setTotalCount + '条数据', // 条目总数
+                slideSpeed: 600, // 缓动速度。单位毫秒
+                jump: true, //是否支持跳转
+                callback: function (page) { // 回调函数
+                    // console.log(page);
+                    if (page == 0) {
+                        // var page =parseInt(page-1)
+                        addPostSou1(page)
+                    } else {
+                        var page = parseInt(page - 1)
+                        addPostSou1(page)
+                    }
+
+                    if (numBage3) {
+                        var page = parseInt(page - 1)
+                        addPostSou1(page)
+                    } else {
+                        numBage3 = true
+                    }
+                }
+            })
+
+        },
+        error: function () {
+            console.log('error')
+        }
+    })
+}
+
+var addWE = false
+function addPostSou2(number) {
+
+    $.ajax({
+        type: "get",
+        url: urlAll + "/devicealarmquery?page=" + number,
+        dataType: "json",
+        jsonpCallback: "callback",
+        success: function (data) {
+            // console.log('拉取数据', data)
+            // var obj = data[0];
+            addPInfo1(data)
+            var setTotalCount = 1000;
+            var totalYe = Math.ceil(data[0].number / 10)
+            ///console.log(totalYe+"22233311")
+            $('#box3').paging({
+                initPageNo: 1, // 初始页码
+                totalPages: totalYe, //总页数
+                // totalCount: '合计' + setTotalCount + '条数据', // 条目总数
+                slideSpeed: 600, // 缓动速度。单位毫秒
+                jump: true, //是否支持跳转
+                callback: function (page) { // 回调函数
+                    // console.log(page);
+
+
+                    if (addWE) {
+                        var page = parseInt(page - 1)
+                        addPostSou2(page)
+                    } else
+                        addWE = true
+                }
+            })
+
+        },
+        error: function () {
+            console.log('error')
+        }
+    })
+}
+
+//plice-1
+function addPInfo(data) {
+    $('#perInfo').html('')
+    //console.log(data+'6666666oopp')
+    data.forEach(function (obj, i) {
+        var typeName = ""
+        if (obj.column == "1") {
+            typeName = "狱警"
+        }
+        if (obj.column == "2") {
+            typeName = "犯人"
+        }
+        if (obj.column == "3") {
+            typeName = "外来人员"
+        }
+        //console.log(i+"2222")
+        const peopleNumber = i + 1;
+        var info = `<li id="` + obj.chest_card_id + `">
+                    <span style="width:25%">`+ obj.chest_card_id + `</span>
+                    <span style="width:25%">`+ obj.name + `</span>
+                    <span style="width:25%">`+ typeName + `</span>
+                    <span style="width:25%"><a style="marign-right:10px">查看</a><a style="marign-right:10px">详情</a><a style="marign-right:10px" class="guiJIPeople"  name="` + obj.name + `" id="` + obj.chest_card_id + `" >轨迹</a></span>
+                </li>`
+        $('#perInfo').append($(info))
+
+    })
+    // $('#perInfo li').click(function () {
+    //     //var id = $(this).attr('id')
+    //    // app.level.change(app.query('[id=' + id + ']')[0])
+    // })
+
+}
+
+function addPInfoSo(data) {
+    $('#perInfo').html('')
+    //console.log(data)
+    data.forEach(function (obj, i) {
+        var typeName = ""
+        if (obj.ptype == "1") {
+            typeName = "狱警"
+        }
+        if (obj.ptype == "2") {
+            typeName = "犯人"
+        }
+        if (obj.ptype == "3") {
+            typeName = "外来人员"
+        }
+        //console.log(i+"2222")
+        const peopleNumber = i + 1;
+        var info = `<li id="` + obj.device_id + `">
+                    <span style="width:25%">`+ obj.device_id + `</span>
+                    <span style="width:25%">`+ obj.username + `</span>
+                    <span style="width:25%">`+ typeName + `</span>
+                    <span style="width:25%"><a style="marign-right:10px">查看</a><a style="marign-right:10px">详情</a><a style="marign-right:10px" class="guiJIPeople"  name="` + obj.name + `" id="` + obj.chest_card_id + `" >轨迹</a></span>
+                </li>`
+        $('#perInfo').append($(info))
+
+    })
+
+}
+
+function addSInfo(data) {
+    $('#sbInfo').html('')
+    data.forEach(function (obj, i) {
+        var type = null;
+        // console.log(obj.name.substring(0, 1))
+        if (obj.name.substr(0, 1) === 'S') {
+            type = '摄像头'
+        } else if (obj.name.substr(0, 1) === 'M') {
+            type = '门禁'
+        } else if (obj.name.substr(0, 1) === 'C') {
+            type = '车禁'
+        } else if (obj.name.substr(0, 1) === 'J') {
+            type = '基站'
+        } else if (obj.name.substr(0, 1) === 'L') {
+            type = '车辆'
+        } else if (obj.name.substr(0, 1) === 'X') {
+            type = '胸牌'
+        } else if (obj.name.substr(0, 1) === 'H') {
+            type = '手环'
+        } else if (obj.name.substr(0, 1) === 'Z') {
+            type = '周界'
+        } else {
+            type = '未知'
+        }
+        var stateType = "";
+        if (obj.state == 0) {
+            stateType = "掉线"
+        }
+        if (obj.state == 1) {
+            stateType = "正常"
+        }
+        if (obj.state == 2) {
+            stateType = "良好"
+        }
+        if (obj.state == "") {
+            stateType = "无"
+        }
+        var info = `<li  id="` + i + `">
+                    <span style="width:25%">`+ obj.name + `</span>
+                    <span style="width:25%">`+ type + `</span>
+                    <span style="width:25%">`+ stateType + `</span>
+                    <span style="width:25%">详情</span>
+                </li>`
+        $('#sbInfo').append($(info))
+
+    })
+    $('#sbInfo li').click(function () {
+        var id = $(this).attr('id')
+        app.level.change(app.query('[id=' + id + ']')[0])
+    })
+}
+
+
+
+function addPInfo1(data) {
+    $('#perInfo1').html('')
+    //console.log(data+"555555")
+    data.forEach(function (obj, i) {
+        var type = ""
+        if (obj.device_id.substr(0, 1) === 'S') {
+            type = '摄像头'
+        } else if (obj.device_id.substr(0, 1) === 'M') {
+            type = '门禁'
+        } else if (obj.device_id.substr(0, 1) === 'C') {
+            type = '车禁'
+        } else if (obj.device_id.substr(0, 1) === 'J') {
+            type = '基站'
+        } else if (obj.device_id.substr(0, 1) === 'L') {
+            type = '车辆'
+        } else if (obj.device_id.substr(0, 1) === 'X') {
+            type = '胸牌'
+        } else if (obj.device_id.substr(0, 1) === 'H') {
+            type = '手环'
+        } else if (obj.device_id.substr(0, 1) === 'Z') {
+            type = '周界'
+        } else {
+            type = '未知'
+        }
+        var time = getLocalTime(obj.time)
+        var obiZB = obj.alarm_x + "," + obj.alarm_y + "," + obj.alarm_z;
+        //console.log(i+"2222")
+        const peopleNumber = i + 1;
+        const bianHao = type + "-" + obj.device_id
+        var info = `<li id="` + obj.device_id + `">
+                    <span style="width:20%">`+ bianHao + `</span>
+                    <span style="width:15%">`+ obiZB + `</span>
+                    <span style="width:40%">`+ time + `</span>
+                    <span style="width:25%"><a class="xiangQin"  name="` + obj.name + `" id="` + obj.chest_card_id + `" >详情</a></span>
+                </li>`
+        $('#perInfo1').append($(info))
+
+    })
+    // $('#perInfo li').click(function () {
+    //     //var id = $(this).attr('id')
+    //    // app.level.change(app.query('[id=' + id + ']')[0])
+    // })
+    $(".xiangQin").on("click", function () {
+
+    })
+}
+
+
+//电子围栏搜
+function addPostSouDian(number, name) {
+
+    //var name = $('#perName1').val()
+    var date = JSON.stringify([{ "name": name }])
+    $.ajax({
+        'url': urlAll + "/fence_data/list?page=0", //Ajax请求服务的地址
+        'type': "POST", //请求方式 "POST" 或 "GET"，默认为 "GET"
+        'dataType': "json",    //服务返回的数据类型，推荐使用标准JSON数据格式
+        //发送到服务器的数据
+        'contentType': "application/json; charset=utf-8",
+        'data': date,
+        //请求成功后的回调函数
+        'success': function (data) {
+            //console.log(data)
+            addPInfo2(data)
+            var totalYe = Math.ceil(data[0].number / 10)
+
+            $('#box4').paging({
+                initPageNo: 1, // 初始页码
+                totalPages: totalYe, //总页数
+                // totalCount: '合计' + setTotalCount + '条数据', // 条目总数
+                slideSpeed: 600, // 缓动速度。单位毫秒
+                jump: true, //是否支持跳转
+                callback: function (page) { // 回调函数
+                    // console.log(page);
+                    var page = parseInt(page - 1)
+                    addPostSouDian(date, name)
+                }
+            })
+
+
+
+
+            //$("#box").css("display","none")
+            // 处理返回的数据
+        },
+        //请求失败时调用的函数 有以下三个参数：XMLHttpRequest 对象、错误信息、（可选）捕获的异常对象
+        'error': function (xhr, status, error) {
+            console.log(xhr);
+        }
+
+    })
+
+
+}
+
+//电子围栏
+function addPInfo2(data) {
+    $('#perInfo2').html('')
+    //console.log(data+"555555")
+    data.forEach(function (obj, i) {
+
+
+        var obiZB = obj.termination_coordinates_x + "," + obj.termination_coordinates_y + "," + obj.termination_coordinates_z;
+        //console.log(i+"2222")
+        const tim1 = getLocalTime(obj.creation_time);
+        const tim2 = getLocalTime(obj.end_time);
+
+
+        var info = `<li id="` + obj.name + `">
+                   
+                    <span style="width:25%">`+ obiZB + `</span>
+                    <span style="width:40%">`+ tim1 + `</span>
+                    <span style="width:35%">${tim2}</span>
+                </li>`
+        $('#perInfo2').append($(info))
+
+    })
+    // $('#perInfo li').click(function () {
+    //     //var id = $(this).attr('id')
+    //    // app.level.change(app.query('[id=' + id + ']')[0])
+    // })
+    $(".xiangQin").on("click", function () {
+
+    })
+}
+
+
+
+
+
+
+
+
+
+function addComHTML() {
+    var comHTML = `<div class="searchThing" id="comSearch">
+        <div class="Search SB_title">
+            <span>按编号搜索</span>
+            <input type="text" id="comName">
+            <span><button class="SB_btn" id="comBtn">搜索</button></span>
+            <span class="close_btn">X</span>
+        </div>
+        <div class="SB_main">
+            <ul class="info_title">
+                <li>编号</li>
+                <li>名称</li>
+                <li>操作</li>
+            </ul>
+            <ul class="SB_info" id="comInfo">
+
+            </ul>
+        </div>
+    </div>`
+    $('body').append($(comHTML))
+    $('#comBtn').click(function () {
+        var comname = $('#comName').val()
+        addComDate(app.query(/People/).query(eval('/' + comname + '/')))
+    })
+    $('#comSearch').hide()
+    $('.close_btn').click(function () {
+        console.log('关闭')
+        $(this).parent().parent().hide()
+    })
+}
+
+function addComDate(data) {
+    $('#comInfo').html('')
+    data.forEach(function (obj) {
+        var cD = `<li>
+                    <span>`+ obj.name + `</span>
+                    <span>`+ obj.userData.username + `</span>
+                    <span>
+                        <img src='/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/语音.png' alt="">
+                        <img src='/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/视频.png' alt="">
+                    </span>
+                </li>`
+        $('#comInfo').append($(cD))
+    })
+}
+
+
+function addVoiceCalls() {
+    var vc1 = `<div class="searchThing" id="vc1">
+        <div style="width: 100%;height: 40px;position: relative;"><span class="close_btn">X</span></div>
+        <div class="SB_main">
+            <ul class="info_title">
+                <li>编号</li>
+                <li>名称</li>
+                <li>操作</li>
+            </ul>
+            <ul class="SB_info" id="vcInfo1">
+
+            </ul>
+        </div>
+    </div>`
+    $('body').append(vc1)
+    $('#vc1').hide()
+    $('.close_btn').click(function () {
+        console.log('关闭')
+        $(this).parent().parent().hide()
+    })
+}
+
+function addVcData1() {
+    app.query(/People/).forEach(function (obj) {
+        var vd1 = `<li>
+                    <span>`+ obj.name + `</span>
+                    <span>`+ obj.userData.username + `</span>
+                    <span>
+                        <img src='/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/语音.png' alt="">
+                    </span>
+                </li>`
+        $('#vcInfo1').append($(vd1))
+    })
+}
+
+
+function addVideoCalls() {
+    var vc1 = `<div class="searchThing" id="vc2">
+    <div style="width: 100%;height: 40px;position: relative;"><span class="close_btn">X</span></div>
+        <div class="SB_main">
+            <ul class="info_title">
+                <li>编号</li>
+                <li>名称</li>
+                <li>操作</li>
+            </ul>
+            <ul class="SB_info" id="vcInfo2">
+
+            </ul>
+        </div>
+    </div>`
+    $('body').append(vc1)
+    $('#vc2').hide()
+    $('.close_btn').click(function () {
+        console.log('关闭')
+        $(this).parent().parent().hide()
+    })
+}
+
+function addVcData2() {
+    app.query(/People/).forEach(function (obj) {
+        var vd2 = `<li>
+                    <span>`+ obj.name + `</span>
+                    <span>`+ obj.userData.username + `</span>
+                    <span>
+                        <img src='/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/img/视频.png' alt="">
+                    </span>
+                </li>`
+        $('#vcInfo2').append($(vd2))
+    })
+}
+
+
+function addWHTML() {
+    var w1 = `<div class="searchThing alarm" id="w1">
+    <div style="width: 100%;height: 40px;position: relative;"><span class="close_btn">X</span></div>
+    <div class="SB_main">
+        <ul class="alarm_title">
+            <li>告警设备</li>
+            <li>告警人员</li>
+            <li>告警程度</li>
+            <li>告警时间</li>
+        </ul>
+        <ul class="alarm_main">
+            <li>
+                <span>SH001</span><span>朝有利</span><span>严重</span><span>2019-06-17 15:59:59</span>
+            </li>
+            <li>
+                <span>SH001</span><span>朝有利</span><span>严重</span><span>2019-06-17 15:59:59</span>
+            </li>
+            <li>
+                <span>SH001</span><span>朝有利</span><span>严重</span><span>2019-06-17 15:59:59</span>
+            </li>
+        </ul>
+    </div>
+</div>`
+    $('body').append(w1)
+    $('#w1').hide()
+    var w2 = `<div class="searchThing alarm" id="w2">
+    <div style="width: 100%;height: 40px;position: relative;"><span class="close_btn">X</span></div>
+    <div class="SB_main">
+        <ul class="alarm_title">
+            <li>告警设备</li>
+            <li>告警人员</li>
+            <li>告警程度</li>
+            <li>告警时间</li>
+        </ul>
+        <ul class="alarm_main">
+            <li>
+                <span>SH001</span><span>朝有利</span><span>严重</span><span>2019-06-17 15:59:59</span>
+            </li>
+            <li>
+                <span>SH001</span><span>朝有利</span><span>严重</span><span>2019-06-17 15:59:59</span>
+            </li>
+            <li>
+                <span>SH001</span><span>朝有利</span><span>严重</span><span>2019-06-17 15:59:59</span>
+            </li>
+        </ul>
+    </div>
+</div>`
+    $('body').append(w2)
+    $('#w2').hide()
+    $('.close_btn').click(function () {
+        console.log('关闭')
+        $(this).parent().parent().hide()
+    })
+}
+
+
+// 人员隐藏
+function personHide() {
+    $('#perSearch').hide()
+
+    // 人员搜索页面hide
+    personAllList.forEach(function (obj) {
+        obj.showUI(false)
+        if (obj.ui) {
+            obj.showPanel()
+        }
+    }) // 隐藏人员图标
+    crew_i = perS1_i = perS2_i = perS3_i = false
+}
+
+
+// 设备隐藏
+
+function sbHide() {
+    $('#sbSearh').hide()
+    sbAllList.forEach(function (obj) {
+        obj.showUI(false)
+        if (obj.ui) {
+            obj.showPanel()
+        }
+    })
+    videoList.forEach(function (obj) {
+        obj.showUI(false)
+        if (obj.ui) {
+            obj.ui.destroy()
+            obj.ui = null
+        }
+        if (obj.videoFrame) {
+            obj.videoFrame()
+        }
+
+    })
+    eq_i = yj_i = cj_i = mj_i = jz_i = sxt_i = false
+}
+
+
+
+// 告警隐藏
+function alarmHide() {
+    $('#w1').hide()
+    $('#w2').hide()
+    $("#perSearch1").hide()
+    crew_i1 = cw_i = hw_i = false
+}
+
+// 指挥隐藏
+function commandHide() {
+    $('#comSearch').hide()
+    $('#vc1').hide()
+    $('#vc2').hide()
+    com_i = vc_i = vdc_i = false
+
+}
+
+// 电子围栏隐藏
+function fenceHide() {
+    $('#vc1').hide()
+    $('#vc2').hide()
+    $("#perSearch2").hide()
+    crew_i2 = fc_i = fhc_i = false
+}
+
+
+// 点击弹出信息框
+function clickShowUI() {
+    var allThing = app.query(/SXT/).add(app.query(/MJ/)).add(app.query(/CJ/)).add(app.query(/YJ/)).add(app.query(/People/)).add(app.query(/JZ/))
+    allThing.on('SingleClick', function (ev) {
+        console.log('点击成功')
+        allThing.style.outlineColor = null
+        var object = ev.object;
+        show_ui(object)
+
+    })
+}
+
+// 弹出信息框
+function show_ui(object) {
+    if (gold_thing) gold_thing.obj.style.outlineColor = null
+    if (gold_thing && gold_thing.ui) {
+        gold_thing.ui.destroy()
+        gold_thing = null
+
+    }
+    object.style.outlineColor = '#DC143C'
+    console.log(object.name.substring(0, 1))
+    if (object.name.substring(0, 1) === 'P') {
+        gold_thing = new Person(object)
+        gold_thing.showPanel()
+        console.log('人员')
+    } else if (object.name.substring(0, 1) === 'M') {
+        gold_thing = new MJ(object)
+        gold_thing.showPanel()
+    } else if (object.name.substring(0, 1) === 'C') {
+        gold_thing = new CJ(object)
+        gold_thing.showPanel()
+    } else if (object.name.substring(0, 1) === 'Y') {
+        gold_thing = new YJ(object)
+        gold_thing.showPanel()
+    } else if (object.name.substring(0, 1) === 'J') {
+        gold_thing = new JZ(object)
+        gold_thing.showPanel()
+    } else if (object.name.substring(0, 1) === 'S') {
+        gold_thing = new VideoCamera(object)
+        gold_thing.showPanel()
+    }
+}
+
+// 初始化楼层数据
+
+function addFloorInfo() {
+    app.query('.Building').forEach(function (build) {
+        var floors = build.floors
+        for (let i = 0; i < floors.length; i++) {
+            if (i < 6) {
+                floors[i].floorNum = '第' + (i + 1) + '层'
+            } else {
+                floors[i].floorNum = '楼顶'
+            }
+
+        }
+    })
+}
+
+// 点击建筑房间弹出信息框
+var buildThing = null;
+
+function showBuildUI() {
+    app.on('SingleClick', '.Building', function (ev) {
+        var object = ev.object
+        if (buildThing) {
+            buildThing.showUI(false)
+            buildThing = null
+        }
+        buildThing = new Build(object)
+        buildThing.showUI(true)
+    })
+    app.on('SingleClick', '.Floor', function (ev) {
+        var object = ev.object
+        if (buildThing) {
+            buildThing.showUI(false)
+            buildThing = null
+        }
+        buildThing = new Floor(object)
+        buildThing.showUI(true)
+    })
+    app.on('SingleClick', '.Room', function (ev) {
+        var object = ev.object
+        if (buildThing) {
+            buildThing.showUI(false)
+            buildThing = null
+        }
+        buildThing = new Room(object)
+        buildThing.showUI(true)
+    })
+
+}
+var numbee = 0, neiRon = "";
+// 初始化
+function init() {
+    //bc_fence()
+
+    getRedisData()
+    //domeMAJAX()
+    addPostSouDian(numbee, neiRon)
+    domeMAJAXPost()
+    // addPostSou()
+    // addPostSou1()
+    // timeData()
+    addBuidInfo()
+    intoBuild()
+    gotoBuild()
+    addVideoInfo()
+    addPersonimg()
+    addSBImg()
+    addDate()
+    addPloice()
+    addPloice1()
+    addSBData()
+    addStaHTML()
+    // addPInfo(app.query(/People/))
+    addPostSou(numbee)
+    //addSInfo(sbList)
+    //addComDate(app.query(/People/))
+    addPostSou1(numbee)
+    //addPostSou2(numbee)
+    addVcData1()
+    addVcData2()
+    addFloorInfo()
+    showBuildUI()
+
+
+    ckickAction()
+    clickShowUI()
+    app.camera.yAngleLimited = [0, 60]; // 设置视角上翻角度
+}
+
+
+function getLocalTime(nS) {
+    return new Date(parseInt(nS) * 1000).toLocaleString().replace(/:\d{1,2}$/, ' ');
+}
+
+//获取Redis数据
+
+
+function getRedisData() {
+
+
+    $.ajax({
+        type: "get",
+        url: urlAll + "/get/device_data",
+        dataType: "json",
+        jsonpCallback: "callback",
+        success: function (data) {
+            console.log('人员数据', data)
+            if (data != 'error') {
+                var datt = [];
+                for (var i = 0; i < 10; i++) {
+                    datt.push(data[i])
+                }
+                createRedisData(data, peoplE)
+                peoplE = false
+                var daNum = parseInt(data.length)
+                $("#peoNum").text(daNum)
+            }
+        },
+        error: function () {
+            console.log('error')
+        }
+    })
+
+    // setInterval(function(){
+    //      $.ajax({
+    //         type: "get",
+    //         url: urlAll+"/get/device_data",
+    //         dataType: "json",
+    //         jsonpCallback: "callback",
+    //         success: function (data) {
+    //             // console.log('拉取数据', data)
+    //             if (data != 'error') {
+    //                 // var datt = [];
+    //                 // for(var i=0;i<10;i++){
+    //                 //     datt.push(data[i])
+    //                 // }
+    //                 createRedisData(data,peoplE)
+    //                 peoplE = false
+    //                 var daNum = parseInt(data.length)
+    //                 $("#peoNum").text(daNum)
+    //             }
+    //         },
+    //         error: function () {
+    //             console.log('error')
+    //         }
+    //     })
+    // },1000)
+
+
+}
+
+var person_object = prisoner_object = outsider_object = []
+function createRedisData(data, ddatr) {
+    // console.log(ddatr+"wweevfrt")
+    // let i =  0
+    data.forEach(function (d) {
+        console.log('one数据', d)
+        if (app.query('[id=' + d.device_id + ']').query('[name=' + d.username + ']')[0]) {
+            app.query('[id=' + d.device_id + ']').query('[name=' + d.username + ']')[0].moveTo({
+                position: [d.x + d.ref_x, d.z + d.ref_z, d.y + d.ref_y],
+                orientToPath: true,
+                orientToPathDegree: 0,
+                time: 1000,
+                complete: function () {
+                    // console.log("moveto completed");
+                }
+            });
+        } else {
+            // 创建Thing
+            // person：狱警 prisoner：犯人 outsider：外来人员
+            if (d.ptype == 1) {
+                var person = app.create({
+                    type: 'Thing',
+                    name: d.username,
+                    id: d.device_id,
+                    url: model_json['person'],
+                    //url: 'https://model.3dmomoda.com/models/954F58D2A3BD47149882482D5046ABF2/0/gltf/', 
+                    // 模型地址
+                    position: [d.x + d.ref_x, d.z + d.ref_z, d.y + d.ref_y],
+                    // 位置
+                    angle: 0,
+                    deviceType: d.product,
+                    // 旋转
+                    complete: function () {
+                        // console.log('thing created: ' + this.id);
+                    }
+                });
+                person.userData.build = d.building
+                person.userData.floor = d.floor
+                person.userData.room = d.room
+                person_object.push(new Person(person))
+            } else if (d.ptype == 2) {
+                var prisoner = app.create({
+                    type: 'Thing',
+                    name: d.username,
+                    id: d.device_id,
+                    url: model_json['prisoner'],
+                    //url: 'https://model.3dmomoda.com/models/954F58D2A3BD47149882482D5046ABF2/0/gltf/', 
+                    // 模型地址
+                    position: [d.x + d.ref_x, d.z + d.ref_z, d.y + d.ref_y],
+                    // 位置
+                    angle: 0,
+                    deviceType: d.product,
+                    // 旋转
+                    complete: function () {
+                        // console.log('thing created: ' + this.id);
+                    }
+                });
+                prisoner.userData.build = d.building
+                prisoner.userData.floor = d.floor
+                prisoner.userData.room = d.room
+                prisoner_object.push(new Prisoner(prisoner))
+            } else {
+                var outsider = app.create({
+                    type: 'Thing',
+                    name: d.username,
+                    id: d.device_id,
+                    url: model_json['prisoner'],
+                    //url: 'https://model.3dmomoda.com/models/954F58D2A3BD47149882482D5046ABF2/0/gltf/', 
+                    // 模型地址
+                    position: [d.x + d.ref_x, d.z + d.ref_z, d.y + d.ref_y],
+                    // 位置
+                    angle: 0,
+                    deviceType: d.product,
+                    // 旋转
+                    complete: function () {
+                        // console.log('thing created: ' + this.id);
+                    }
+                });
+                outsider.userData.build = d.building
+                outsider.userData.floor = d.floor
+                outsider.userData.room = d.room
+                outsider_object.push(new Outsider(outsider))
+            }
+
+
+        }
+    })
+    // if(ddatr){
+    //ajaxDime()
+    if (ddatr) {
+        ajaxDime("/followgroup", "", { type: "get" }).then(function (data) {
+            var data = [{ "groupname": "123", "prison": [{ "name": "FR20190509883", "device": "Hsh60" }], "workman": [{ "name": "sh10", "device": "Hsh61" }] }, { "groupname": "456", "prison": [{ "name": "FR20190509884", "device": "Hsh62" }, { "name": "FR20190509887", "device": "Hsh6" }], "workman": [{ "name": "sh103", "device": "Hsh63" }, { "name": "sh102", "device": "Hsh64" }] }]
+            data.forEach((date, i) => {
+                var value = {
+                    "zuHAo": date.groupname,
+                    "start_position": "监狱一号楼",
+                    "end_position": "监狱十一号楼601室"
+                };
+                //组长跟随组
+                const zid = "#" + data.device
+                const zuPlice = app.query(zid)[0];
+                const typeZu = 2
+                const uiAnchor = createUIAnchorGEN(zuPlice, value);
+                test_create_ui_people(zuPlice, typeZu)
+                //遍历跟随组警察
+                date.workman.forEach((datNum, i) => {
+                    const id = "#" + datNum.device
+                    const appObj = app.query(id)[0];
+                    const type = 0;
+                    appObj.style.outlineColor = 0x00FFFFFF;
+                    const uiAnchor = createUIAnchorGEN(appObj, value);
+                    test_create_ui_people(appObj, type)
+                })
+                //遍历跟随组犯人
+                date.prison.forEach((datNum, i) => {
+                    const id = "#" + datNum.device
+                    const type1 = 1;
+                    const appObj1 = app.query(id)[0];
+                    appObj1.style.outlineColor = 0xFF0000;
+                    const uiAnchor = createUIAnchorGEN(appObj1, value);
+                    test_create_ui_people(appObj1, type1)
+                })
+            })
+            $(".span1").css("width", "20%");
+            $(".span2").css("width", "80%");
+        })
+
+    }
+
+
+
+}
+
+
+
+
+
+//跟随组物体顶界面
+var uiPlioce = null;
+function test_create_ui_people(obj, type) {
+    const url = 'https://model.3dmomoda.com/models/F68A51D29E1C44C8A479563035A72B56/0/gltf/';
+    if (type == 1) {
+        url = 'https://model.3dmomoda.com/models/78B714AC96F64F0499C52905E04905AC/0/gltf/'
+
+    }
+    uiPlioce = app.create({
+        type: 'Thing',
+        name: '图标',
+        parent: obj,
+        url: url,
+        //element: create_element(),
+        localPosition: [0, 2, 0],
+        pivot: [0.5, 1] //  [0,0]即以界面左上角定位，[1,1]即以界面右下角进行定位
+    });
+}
+
+// 获取围栏数据
+get_Fence_Data()
+function get_Fence_Data() {
+    //console.log('测试')
+    $.ajax({
+        url: urlAll + '/fence_data/list',
+        type: "get",
+        dataType: "json",
+        jsonpCallback: 'callback'
+    }).then(function (data) {
+        //成功的回调函数
+        // console.log('成功', data);
+    }, function (err) {
+        //错误的回调函数
+        console.log('失败', err);
+    });
+    // $.ajax({
+    //     type: "get",
+    //     url: "http://47.103.34.10:8080/fence_data/list",
+    //     dataType: "json",
+    //     jsonpCallback: "callback",
+    //     success: function (data) {
+    //         console.log('围栏数据', data)
+    //         // if (data) { create_Fences(data) }
+    //     },
+    //     error: function () {
+    //         console.log('error')
+    //     }
+    // })
+}
+
+function domeMAJAX() {
+
+    $.ajax({
+        type: "get",
+        url: "http://47.103.34.10:8080/search_data/prison_building",
+        dataType: "json",
+        jsonpCallback: "callback",
+        success: function (data) {
+            //console.log('围栏数据', data)
+            addDate(data)
+            // if (data) { create_Fences(data) }
+        },
+        error: function () {
+            console.log('error')
+        }
+    })
+
+}
+
+var fence_List_Last = null, fence_List_New = []
+// var fence_List_Last = ?[];创建有效电子围栏
+function create_Fences(data) {
+    fence_List_New = []
+    data.forEach(function (d) {
+        var x1 = parseFloat(d.initial_coordinates_x), y1 = parseFloat(d.initial_coordinates_y), z = parseFloat(d.initial_coordinates_z);
+        var x2 = parseFloat(d.termination_coordinates_x), y2 = parseFloat(d.termination_coordinates_y)
+        var px_1 = [x1, z, y1 + (y2 - y1) / 2], px_2 = [x2, z, y1 + (y2 - y1) / 2], long_x = Math.abs(y1 - y2) / 1.5
+        var py_1 = [x1 + (x2 - x1) / 2, z, y1], py_2 = [x1 + (x2 - x1) / 2, z, y2], long_y = Math.abs(x1 - x2) / 1.5
+        var ls = [px_1, py_1, px_2, py_2]
+        // console.log('创建围栏', ls)
+        var zoom;
+        for (var i = 0; i < 4; i++) {
+            if (i % 2 == 0) {
+                zoom = [long_x, 1, 1]
+            } else {
+                zoom = [long_y, 1, 1]
+            }
+
+            // 创建围栏
+            var wei = app.create({
+                type: 'Thing',
+                name: d.id,
+                url: 'http://static.3dmomoda.com/models/131db7d9aa5447b1939815e5d2497a4e/0/gltf/',
+                // 模型地址
+                position: ls[i],
+                // 位置
+                angle: 90 * (i + 1),
+                scale: zoom,
+                // 旋转
+                complete: function () {
+                    // console.log('thing created: ' + this.id);
+                    //this.style.color = '#0000ff'
+                    this.style.color = '#0000ff'
+                    // this.style.outlineColor = 0xFF0000;
+                    fence_List_New.push(this)
+                }
+            });
+
+        }
+
+    })
+    if (fence_List_Last != null || fence_List_Last == undefined) {
+
+    } else {
+        //console.log(fence_List_Last+"wwwww")
+        fence_List_Last.forEach(function (fence) {
+            fence.destroy()
+        })
+    }
+
+    fence_List_Last = fence_List_New
+
+
+}
+
+
+// 拖拽
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------
+// 拖拽创建物体
+THING.Utils.dynamicLoad(['/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/xl.css', '/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/xl.js'], function () {
+    var panel =
+        `<div class="list fcbox" id="drag-html">
+    <ul class="yiji">
+        <li>
+            <span class="inactive">静态设备拖拽</span>
+            <ul style="display: none">
+                <li class="inactive active" name="2"  title="摄像头" id="camera" data-url="http://model.3dmomoda.com/models/EFAEAF64DF8146B7B495FF7AD731AA3A/0/gltf/">
+                    <img src='/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/Caemer.png' alt="">
+                </li>
+                <li class="inactive active" name="1"  title="门禁" id="guard" data-url="http://model.3dmomoda.com/models/EFAEAF64DF8146B7B495FF7AD731AA3A/0/gltf/">
+                    <img src='/uploads/wechat/bWVzb255Y2hpZA==/file/demo0328/grude.png' alt="">
+                </li>
+            </ul>
+        </li>
+    </ul>
+</div>`
+    $('#div3d').append(panel);
+    $('#drag-html').hide()
+});
+
+
+var thing = null, line;
+var drag_drop_list = [];
+app.on('load', function () {
+    // 按钮拖拽事件(dragIcon为教程页面提供的工具)
+    dragIcon('camera', dragStart);
+    dragIcon('guard', dragStart);
+    //get time
+    var dt = "2019-05-14 17:09:06";
+    var newDt = new Date(dt.replace("-", "/"));
+    // console.log(newDt)
+
+
+});
+
+
+function play(data, timeDa) {
+    //var car = app.query('car01')[0];
+    // 创建Thing 
+    //console.log("111555"+line.points)
+    var car = app.create({
+        type: 'Thing',
+        name: '人物02',
+        url: 'https://model.3dmomoda.com/models/954F58D2A3BD47149882482D5046ABF2/0/gltf/',
+        // 模型地址 
+        position: data[0],
+        userData: timeDa[0],
+        // 位置 
+        angle: 0,
+        // 旋转 
+        complete: function () {
+            //  console.log('thing created: ' + this.id);
+        }
+    });
+    createUIAnchor(car)
+    // app.camera.flyTo({
+    // 		object: car,
+    //         xAngle: 90, // 绕物体自身X轴旋转角度
+    // 		yAngle: 0, // 绕物体自身Y轴旋转角度
+    // 		radiusFactor: 3, // 物体包围盒半径的倍数
+    // 		time: 2 * 1000,
+    // 		complete: function () {
+    // 			console.log("飞行结束");
+    // 		}
+    // 	});
+
+    car.movePath({
+        'path': line.points, // 轨迹路线
+        'time': 120000, // 移动时间 // car.on('update', function () {
+        // 		// 摄像机位置为 移动小车后上方
+        // 		// 为了便于计算 这里用了坐标转换 将相对于小车的位置 转换为 世界坐标
+        // 		app.camera.position = car.selfToWorld();
+        // 		// 摄像机目标点为 移动小车的坐标
+        // 		app.camera.target = car.position
+        // 	}, '自定义摄影机跟随');
+        'orientToPath': true, // 物体移动时沿向路径方向
+        // 'loopType': THING.LoopType.Repeat,
+    });
+
+
+}
+
+
+//
+function createUIAnchor(obj) {
+    // 创建widget (绑定数据用)
+    var panel = new THING.widget.Panel({
+        // 设置面板宽度
+        width: '350px',
+        // cornerType 角标样式
+        // 没有角标 none ，没有线的角标 noline ，折线角标 polyline
+        cornerType: 'polyline'
+
+    })
+
+    // 绑定物体身上相应的属性数据
+
+    panel.addString(obj.userData, 'device_id').caption('名称');
+    panel.addString(obj.userData, 'create_time').caption('开始时间');
+    panel.addString(obj.userData, 'end_time').caption('结束时间');
+
+
+    // 创建UIAnchor面板
+    var uiAnchor = app.create({
+        // 类型
+        type: 'UIAnchor',
+        // 父节点设置
+        parent: obj,
+        // 要绑定的页面的 element 对象
+        element: panel.domElement,
+        // 设置 localPosition 为 [0, 0, 0]
+        localPosition: [0, 0, 0],
+        // 指定页面的哪个点放到localPosition位置上(百分比)
+        pivot: [-0.2, 2.1]
+    });
+
+    return uiAnchor;
+}
+
+
+function guiJiPeople(data, timeDa) {
+    //console.log(data)
+    //debugger
+    line = app.create({
+        type: 'Line',
+        color: 0x00FF00, // 轨迹线颜色
+        dotSize: 2, // 轨迹点的大小
+        dotColor: 0xFF0000, // 轨迹点的颜色
+        points: data,
+    })
+    play(data, timeDa)
+}
+
+function ajaxPost(data) {
+    var timeD = JSON.parse(data)
+
+    $.ajax({
+        'url': urlAll + "/api/guiji", //Ajax请求服务的地址
+        'type': "POST", //请求方式 "POST" 或 "GET"，默认为 "GET"
+        'dataType': "json",    //服务返回的数据类型，推荐使用标准JSON数据格式
+        //发送到服务器的数据
+        'contentType': "application/json; charset=utf-8",
+        'data': data,
+        //请求成功后的回调函数
+        'success': function (data) {
+            $("#peopleGuiji").remove();
+
+            const dataList = []
+            data.forEach((data, i) => {
+                dataList.push([data.x, data.y, data.z])
+            })
+            //console.log(dataList)
+            guiJiPeople(dataList, timeD);
+            // 处理返回的数据
+        },
+        //请求失败时调用的函数 有以下三个参数：XMLHttpRequest 对象、错误信息、（可选）捕获的异常对象
+        'error': function (xhr, status, error) {
+            console.log(xhr);
+        },
+    });
+}
+
+
+
+
+
+
+
+
+
+
+// 物体跟随鼠标移动
+app.on('mousemove', function (ev) {
+    if (thing) {
+        var worldPosition = app.picker.pickWorldPosition(ev.clientX, ev.clientY);
+        if (!worldPosition) {
+            worldPosition = app.camera.screenToWorld(ev.clientX, ev.clientY);
+        }
+
+        thing.position = worldPosition;
+    }
+});
+
+// 鼠标右键点击取消所有控制轴
+app.on('mousedown', function (ev) {
+    if (ev.button == 2) {
+        app.query('.Thing').forEach(function (object) {
+            object.removeControl('axisControl');
+        });
+    }
+});
+
+// 鼠标抬起取消物体移动
+app.on('mouseup', function (ev) {
+    if (thing) {
+        // console.log('aaaa')
+        // 重新让物体开启拾取
+        thing.pickable = true;
+
+        // 点击物体可以开启/关闭控制轴
+        thing.on('singleclick', function (ev) {
+            var object = ev.object;
+            if (ev.button === 0) {
+                if (object.hasControl('axisControl')) {
+                    object.removeControl('axisControl');
+                }
+                else {
+                    app.camera.fit(object);
+                    object.addControl(new THING.AxisTransformControl(object), 'axisControl');
+                }
+
+                app.query('.Thing').not(object).forEach(function (object) {
+                    object.removeControl('axisControl');
+                });
+                app.camera.flyTo(object)
+            } else if (ev.button === 2) {
+                drag_drop_list.remove(object)
+                object.visible = false
+            }
+
+        });
+
+        // 出发点击事件来给物体添加控制轴
+        thing.trigger('singleclick');
+
+        thing = null;
+    }
+
+    // 开启摄像机转动
+    app.camera.enableRotate = true;
+})
+
+// 创建物体并且开始拖动
+var targ_pos;
+function dragStart(name, url) {
+    // console.log('摄像机看点', app.camera.target)
+    if (app.camera.target[1] < 0.5) {
+        targ_pos = [app.camera.target[0], 0.5, app.camera.target[2]]
+    } else {
+        targ_pos = app.camera.target
+    }
+    // console.log('拖拽舞台坐标', targ_pos)
+    // 创建物体
+    thing = app.create({
+        type: 'Thing',
+        name: name,
+        url,
+        position: targ_pos,
+        complete: function () {
+            this.scale = [10, 10, 10]
+            // this.model_key = id
+            app.camera.fit(this)
+
+        }
+    });
+    drag_drop_list.push(thing)
+
+    // 防止拖动过程中获取时间坐标的时候，对位置进行重复拾取
+    thing.pickable = false;
+
+    // 关闭摄像机转动
+    app.camera.enableRotate = false;
+}
+
+// 关联拖动图标
+function dragIcon(id, callback1) {
+    // console.log(id)
+    var dom = document.getElementById(id);
+    var url = dom.getAttribute('data-url');
+    var id = dom.getAttribute('id');
+    var name = dom.getAttribute('name');
+    dom.onmousedown = function (e) {
+        callback1(name, url)
+
+    }
+}
+
+function save_Drag_Data(data) {
+    var drag_Data_list = []
+    data.forEach(function (drag_thing) {
+        var type = drag_thing.name
+        var control_x = drag_thing.position[0]
+        var control_y = drag_thing.position[2]
+        var control_z = drag_thing.position[1]
+        var drag_thing_dic = { control_x: control_x, control_y: control_y, control_z: control_z, type: type }
+        drag_Data_list.push(drag_thing_dic)
+    })
+    $.ajax({
+        type: "post",
+        url: urlAll + "/drag",
+        dataType: "json",
+        contentType: 'application/json',
+        jsonpCallback: "callback",
+        data: JSON.stringify(drag_Data_list),
+        success: function (d) {
+            //console.log(d)
+        },
+        error: function (d) {
+            console.log('error')
+
+        }
+    });
+}
+
+
+//电子围栏数据
+
+function weiLangShuJu(data) {
+    $.ajax({
+        type: "post",
+        url: urlAll + "/insert/fence",
+        dataType: "json",
+        contentType: 'application/json',
+        jsonpCallback: "callback",
+        data: JSON.stringify(data),
+        success: function (d) {
+            //console.log(d)
+            $("#peopleWeiLan").remove();
+            view_i = !view_i
+            changeInto('view', view_i)
+            console.log('插入围栏成功！！！！')
+            app.camera.viewMode = THING.CameraView.Normal;  //3D视图
+            app.pauseEvent('mousedown', null, '电子围栏框选创建开始')
+            app.pauseEvent('mouseup', null, '电子围栏框选创建结束')
+        },
+        error: function (d) {
+            console.log('error')
+
+        }
+    });
+}
+
+
+//
+function timeData1(data1, data2) {
+    //console.log("111weeee")
+    $("#peopleWeiLan").remove();
+    THING.Utils.dynamicLoad(['/uploads/wechat/emhhbmdDaGVuZw==/file/demo2000/laydate/laydate.js'], function () {
+        var sbHTML1 = `<div id="peopleWeiLan" style="position:absolute;left:520px;top:20px;padding: 8px;width:300px;text-align: center;background: rgba(0,0,0,0.5);height:300px;z-index:100;border-radius: 5px 5px;" class="timerType" id="sbType">
+                    <div style="color:#fff;margin-bottom: 10px;">开始时间：<input style="background:none;border: 1px solid #fff;border-radius: 5px 5px;height: 20px;width: 135px;" type="text" id="test10"></div>
+                   <div style="color:#fff;margin-bottom: 10px;">结束时间：<input style="background:none;    border: 1px solid #fff;border-radius: 5px 5px;height: 20px;width: 135px;"  type="text" id="test11"></div>
+                   <div style="color:#fff;margin-bottom: 10px;"> <button style="width: 65px;height: 25px;margin-right: 15px;" class="guijiPeople12">确定</button><button style="width: 65px;height: 25px;margin-right: 15px;" class="guijiPeople13">取消</button></div>
+                 
+             </div>`
+        $('body').append($(sbHTML1))
+
+        laydate.render({
+            elem: '#test10'
+            , type: 'datetime'
+        });
+        laydate.render({
+            elem: '#test11'
+            , type: 'datetime'
+        });
+
+
+        $(".guijiPeople13").on("click", function () {
+            $("#peopleWeiLan").remove();
+        })
+
+
+
+        $(".guijiPeople12").on("click", function () {
+            var dataAll = [{
+                "name": "",
+                "initial_coordinates_x": data1[0],
+                "initial_coordinates_y": data1[2],
+                "initial_coordinates_z": 0,
+                "termination_coordinates_x": data2[0],
+                "termination_coordinates_y": data2[2],
+                "termination_coordinates_z": 0,
+                "creation_time": $("#test10").val(),
+                "end_time": $("#test11").val(),
+
+            }]
+            //deviceId
+            // var dataTime =[{
+            //     "device_id":deviceId,
+            //     "create_time":$("#test1").val(),
+            //     "end_time":$("#test2").val(),}]
+
+            //  var dataTime =[{
+            //     "device_id":"HSY20006",
+            //     "create_time":"2019-05-21 17:13:11",
+            //     "end_time":"2019-05-22 17:13:11",
+            // }]
+
+            //     var data =JSON.stringify(dataTime)
+            //     ajaxPost(data)
+            weiLangShuJu(dataAll)
+        })
+
+    })
+
+
+
+
+}
+
+
+
+function disableBoxSelect() {
+    // app.off(THING.EventType.Pick, '.Thing', '框选Pick');
+    app.off('mousedown', null, '按下左键进行框选');
+    app.off('mouseup', null, '抬起左键结束框选');
+}
+
+var qiShiZuoBiao = [];
+var zuiHouZuoBiao = [];
+var xuanZe = false
+function box_choose() {
+
+
+}
+
+
+
+
+//点击获取数据
+
+var ui = null;
+function gaoJingAll() {
+
+    $.ajax({
+        type: "get",
+        url: urlAll + "/realtimedeviceinfoquery",
+        dataType: "json",
+        jsonpCallback: "callback",
+        // contentType: 'application/json',
+        // jsonpCallback: "callback",
+        //data: JSON.stringify(data),
+        success: function (d) {
+            if (d) {
+                d.forEach((data, i) => {
+                    const time = getLocalTime(data.time)
+                    app.create({
+                        type: "Marker",
+                        name: data.device_id,
+                        userData: {
+                            "time": time
+                        },
+                        url: "https://thingjs.com/static/images/warning1.png",
+                        //parent: ev.buildings[0], // 指定父物体
+                        postion: [data.alarm_x, data.alarm_y, data.alarm_z], // 父物体坐标系下相对位置
+                        size: 8,
+                        keepSize: true // 保持像素大小
+                    }).on('click', function () {
+                        //console.log('click marker1');
+                        if (ui) {
+                            ui.destroy();
+                            ui = null;
+                        }
+                        //$("#board").remove();
+                        //create_html_gaoj(this.name,this.userData.time)
+                        test_create_ui(this)
+                        $(".seBeiName a").text(this.name)
+                        $(".seBeiTime").text(this.userData.time)
+                    });
+                })
+
+            }
+        },
+        error: function (d) {
+            console.log('error')
+
+        }
+    });
+}
+
+
+
+function create_html_gaoj() {
+    //console.log(name,time)
+
+    var sign =
+        `<div class="sign" id="board" style="font-size: 12px;width: 190px;text-align: center;background-color: rgba(0, 0, 0, .6);border: 3px solid #eeeeee;border-radius: 8px;color: #eee;position: absolute;top: 0;left: 0;z-index: 10;display: none;">
+			<div class="s1" style="margin: 5px 0px 5px 0px;line-height: 32px;overflow: hidden;">
+				<span class="span-l icon" style="float: left;width: 30px;height: 30px;background:url(https://www.thingjs.com/static/images/example/hydrant.png) no-repeat center;margin: 1px 1px 1px 5px;"></span>
+				<span class="span-l font seBeiName" style="float: left;margin: 0px 0px 0px 3px;">编号：<a></a></span>
+				<span class="span-r point" style="float: right;width: 12px;height: 12px;background-color: red;border-radius: 50%;margin: 10px 5px 10px 0px;"></span>
+			</div>
+			<div class="s2" style="margin: 5px 0px 10px 0px;line-height: 18px;font-size: 10px;overflow: hidden;">
+				<span class="span-l font1" style="float: left;margin: 0px 10px 0px 10px;">时间：</span>
+				<span class="span-l font2 seBeiTime" style="float: left;background-color: #2480E3;"></span>
+			</div>
+			<div class="point-top" style="position: absolute;top: -7px;right: -7px;background-color: #3F6781;width: 10px;height: 10px;border: 3px solid #eee;border-radius: 50%;"></div>
+		</div>`
+    $('#div3d').append($(sign));
+
+}
+//create_html();
+
+// 生成一个新面板
+function create_element22() {
+    var srcElem = document.getElementById('board');
+    var newElem = srcElem.cloneNode(true);
+    newElem.style.display = "block";
+    app.domElement.insertBefore(newElem, srcElem);
+    return newElem;
+}
+
+
+
+function test_create_ui(that) {
+    ui = app.create({
+        type: 'UIAnchor',
+        parent: that,
+        element: create_element22(),
+        localPosition: [0, 1, 0],
+        pivot: [0.5, 1] //  [0,0]即以界面左上角定位，[1,1]即以界面右下角进行定位
+    });
+    $(".point-top").on("click", function () {
+        ui.destroy();
+    })
+}
+
+
+//
+function ajaxDime(url, data, params) {
+    return new Promise(function (resolve, reject) {
+        $.ajax({
+            url: urlAll + url,
+            type: params && params.type || 'post',
+            dataType: params && params.dataType || 'JSON',
+            data: data,
+            success: function (res) {
+                resolve(res)
+            },
+            error: function (res) {
+                //alert(res.m)
+            }
+        });
+    });
+
+}
+
+// 电子围栏创建事件
+var start_p = null, end_p = null;
+function fenceMouseup() {
+    app.on('mousedown', function (ev) {
+        if (ev.button == 0) {
+            var pick_position = ev.pickedPosition
+            console.log('选择起始点', pick_position)
+            if (pick_position) {
+                // console.log(i)
+                console.log('开启')
+                console.log('开始框选')
+                app.camera.inputEnabled = false;
+                app.picker.startAreaPicking({
+                    x: ev.x,
+                    y: ev.y
+                });
+                start_p = ev.pickedPosition
+
+            } else {
+                i = true
+                alert('请选择正确区域设置电子围栏')
+            }
+        }
+    }, '电子围栏框选创建开始');
+    app.on('mouseup', function (ev) {
+        if (start_p) {
+            end_p = app.camera.screenToWorld([ev.x, ev.y]);
+            //console.log(zuiHouZuoBiao)
+            timeData1(start_p, end_p)
+            app.camera.inputEnabled = true;
+            app.picker.endAreaPicking();
+            start_p = null;
+        }
+    }, '电子围栏框选创建结束')
+    app.pauseEvent('mousedown', null, '电子围栏框选创建开始')
+    app.pauseEvent('mouseup', null, '电子围栏框选创建结束')
+}
+
+
+function analysis_sb_ALL_info(data_info) {
+    data_info.forEach(function (data) {
+        var sb_name = data.name;
+        if (!app.query(sb_name)[0]) {
+            var ju_str = sb_name.slice(0, 1)
+            if (ju_str == 'S') {
+                data.modelURL = 'https://model.3dmomoda.com/models/2DBD1DCD7B5F49BDA43CC6444FC5CBD0/0/gltf/';
+                create_thing(data)
+            } else if (ju_str == 'J') {
+                data.modelURL = 'https://model.3dmomoda.com/models/20141127087265/0/gltf/';
+                create_thing(data)
+            } else if (ju_str == 'Y') {
+                data.modelURL = 'https://model.3dmomoda.com/models/24E91613E186448C9011ADC7C38F57F7/0/gltf/';
+                create_thing(data)
+            } else if (ju_str == 'M') {
+                data.modelURL = 'https://model.3dmomoda.com/models/A707E60307DA49A4BBD700B12471CE31/0/gltf/'
+                create_thing(data)
+            } else if (ju_str == 'C') {
+                data.modelURL = 'https://model.3dmomoda.com/models/9696F4101B0E478D9F51B62166CCEF20/0/gltf/';
+                create_thing(data)
+            } else {
+
+            }
+        }
+    })
+}
+
+// 创建设备
+function create_thing(data) {
+    console.log('创建', data.name)
+    // 创建Thing 
+    var obj = app.create({
+        type: 'Thing',
+        name: data.name,
+        url: data.modelURL, // 模型地址 
+        position: [data.control_x, data.control_z, data.control_y], // 世界坐标系下的位置
+        complete: function (ev) {
+            //物体创建成功以后执行函数
+            // console.log('thing created: ' + ev.object.id); 
+        }
+    });
+}
+
+
+
+// 获取设备信息
+var sb_ALL_info = [];
+function get_sb_ALL_info() {
+    setInterval(function () {
+        $.ajax({
+            type: "get",
+            url: urlAll + "/deviceto3d",
+            dataType: "json",
+            jsonpCallback: "callback",
+            success: function (d) {
+                console.log('设备信息', d.length)
+                if (d.toString() != sb_ALL_info.toString()) {
+                    sb_ALL_info = d;
+                    analysis_sb_ALL_info(d)
+                }
+            },
+            error: function () { }
+        })
+    }, 1000)
+}
+
+
+
+
+
+

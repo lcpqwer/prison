@@ -1,0 +1,48 @@
+* {
+    padding: 0;
+    margin: 0;
+}
+
+#list-person {
+    width: 400px;
+    height: 400px;
+    overflow-y: auto;
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    background-color: #2b2b2b;
+}
+
+#person-ul {
+    width: 100%;
+}
+
+#person-ul li{
+    background-color: #000000;
+}
+
+#list-person li {
+    font-size: 0;
+    height: 40px;
+    line-height: 40px;
+    width: 100%;
+    margin-top: 10px;
+    list-style: none;
+    color: #ffffff;
+    text-align: center;
+
+}
+
+
+
+#list-person li span {
+    display: block;
+    width: 33%;
+    display: inline-block;
+    font-size: 16px;
+}
+
+#list-person .operation {
+    cursor: pointer;
+}
+

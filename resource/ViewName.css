@@ -1,0 +1,56 @@
+#add-html {
+    position: fixed;
+    margin: auto;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 600px;
+    height: 200px;
+    background-color: #2b2b2b;
+    text-align: center;
+    border-radius: 10px
+}
+
+#add-html * {
+    color: #ffffff;
+}
+
+#add-html .fz {
+    font-size: 20px;
+}
+
+#add-html .title {
+    position: absolute;
+    left: 20px;
+    margin-top: 20px;
+}
+
+#add-html .main {
+    margin-top: 70px;
+}
+
+#add-html #angle-name {
+    width: 400px;
+    height: 30px;
+    border-radius: 5px;
+    border: 2px solid #000000;
+    color: #000000;
+}
+
+#add-html .add-sub {
+    width: 55px;
+    height: 25px;
+    border: none;
+    border-radius: 3px;
+}
+
+#add-html .add-sub:nth-child(1) {
+    background-color: #81F79F;
+    margin-right: 40px
+}
+
+#add-html .add-sub:nth-child(2) {
+    background-color: #FA5858;
+    margin-left: 40px
+}

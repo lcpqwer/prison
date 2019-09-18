@@ -1,0 +1,51 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+.info {
+    position: fixed;
+    top: 200px;
+    width: 250px;
+    height: auto;
+    text-align: center;
+    background-color: #2b2b2b;
+    right: 400px;
+}
+
+.info ul {
+    list-style: none;
+}
+
+.info ul li {
+    height: 40px;
+    color: #ffffff;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 5px;
+    background-color: #000000;
+}
+
+.showMorehandle {
+    color: #cccccc;
+    padding: 5px 0;
+    background-color: #2b2b2b;
+    cursor: pointer;
+}
+
+.info_per {
+    color: #ffffff;
+    padding-top: 10px;
+    font-size: 20px;
+}
+
+.info_poa {
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 20px;
+}
